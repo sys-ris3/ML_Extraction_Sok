@@ -1,0 +1,265 @@
+From e4c3612501c3f11530e73cfadf433f138914975a Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Mon, 11 May 2020 13:21:53 +0000
+Subject: [PATCH 2/2] fix bug of layer.rscalar and add debug support
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ include/darknet.h            |  6 +++---
+ src/add_mask_layer.c         | 14 +++++++++++---
+ src/add_mask_layer.h         |  2 +-
+ src/convolutional_layer.c    |  6 ++++++
+ src/linear_transform_layer.c |  3 +++
+ src/parser.c                 | 33 ++++++++++++---------------------
+ src/utils.h                  | 30 ++++++++++++++++++++++++++++++
+ 7 files changed, 66 insertions(+), 28 deletions(-)
+
+diff --git a/include/darknet.h b/include/darknet.h
+index c956c04..ea6066e 100644
+--- a/include/darknet.h
++++ b/include/darknet.h
+@@ -210,10 +210,10 @@ struct layer{
+     float probability;
+     float scale;
+ 
+-    /* custom op layer :add_mask */
++    /* custom op layer weights*/
+     /* add_mask */
+-    float rscalar;
+-    /* linear_transform */
++    float *rscalar;
++    /* linear_transform & shuffle_channel */
+     float *rbias;
+     int *obfweights;
+     int units;
+diff --git a/src/add_mask_layer.c b/src/add_mask_layer.c
+index ebd106d..687c83b 100644
+--- a/src/add_mask_layer.c
++++ b/src/add_mask_layer.c
+@@ -9,7 +9,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
+-layer make_add_mask_layer(int batch, int h, int w, int c, float rscalar)
++layer make_add_mask_layer(int batch, int h, int w, int c)
+ {
+     layer l = {0};
+     l.type = ADD_MASK;
+@@ -20,13 +20,13 @@ layer make_add_mask_layer(int batch, int h, int w, int c, float rscalar)
+     l.inputs = h * w * c;
+     l.outputs = l.inputs;
+     l.batch=batch;
+-    l.rscalar = rscalar;
+ 
+     l.out_h = h;
+     l.out_w = w;
+     l.out_c = c;
+     l.output = calloc(batch*l.inputs, sizeof(float));
+     l.weights = calloc(l.inputs, sizeof(float));
++    l.rscalar = calloc(1, sizeof(float));
+ 
+     l.forward = forward_add_mask_layer;
+     fprintf(stderr, "Add_Mask Layer: %d inputs\n", l.inputs);
+@@ -41,7 +41,15 @@ void forward_add_mask_layer(layer l, network net)
+     int i, j;
+     for (i = 0; i < m; ++i){
+         for (j = 0; j < k; ++j) {
+-            l.output[i * k + j] = net.input[i * k + j] + l.weights[j] * l.rscalar; 
++            l.output[i * k + j] = net.input[i * k + j] + l.weights[j] * l.rscalar[0]; 
+         }
+     }
++    DUMPW8("add_mask input bytes:",l.inputs,net.input);
++    DUMPW4F("add_mask input float:",l.inputs, net.input);
++    DUMPW8("add_mask weight bytes:",l.outputs, l.weights);
++    DUMPW4F("add_mask weight float:",l.outputs, l.weights);
++    DUMPW4("add_mask rscalar bytes:", 1, l.rscalar);
++    DUMPW4F("add_mask rscalar float:", 1, l.rscalar);
++    DUMPW8("add_mask output bytes:",l.outputs, l.output);
++    DUMPW4F("add_mask output float:",l.outputs, l.output);
+ }
+diff --git a/src/add_mask_layer.h b/src/add_mask_layer.h
+index de8bd6f..95b0251 100644
+--- a/src/add_mask_layer.h
++++ b/src/add_mask_layer.h
+@@ -4,7 +4,7 @@
+ #include "layer.h"
+ #include "network.h"
+ 
+-layer make_add_mask_layer(int batch, int h, int w, int c, float rscalar);
++layer make_add_mask_layer(int batch, int h, int w, int c);
+ 
+ void forward_add_mask_layer(layer l, network net);
+ 
+diff --git a/src/convolutional_layer.c b/src/convolutional_layer.c
+index 1fb58b0..c7114c7 100644
+--- a/src/convolutional_layer.c
++++ b/src/convolutional_layer.c
+@@ -480,8 +480,14 @@ void forward_convolutional_layer(convolutional_layer l, network net)
+         add_bias(l.output, l.biases, l.batch, l.n, l.out_h*l.out_w);
+     }
+ 
++    DUMPW8("conv forward output before bias bytes:",l.outputs, l.output);
++    DUMPW4F("conv forward output before bias float:",l.outputs, l.output);
++
+     activate_array(l.output, l.outputs*l.batch, l.activation);
+     if(l.binary || l.xnor) swap_binary(&l);
++
++    DUMPW8("conv forward output after bias",l.outputs, l.output);
++    DUMPW4F("conv forward output after bias float:",l.outputs, l.output);
+ }
+ 
+ void backward_convolutional_layer(convolutional_layer l, network net)
+diff --git a/src/linear_transform_layer.c b/src/linear_transform_layer.c
+index 3ddeab2..37c24bf 100644
+--- a/src/linear_transform_layer.c
++++ b/src/linear_transform_layer.c
+@@ -59,4 +59,7 @@ void forward_linear_transform_layer(layer l, network net)
+             }
+         }
+     }
++
++    DUMPW8("linear_transform output bytes:",l.outputs, l.output);
++    DUMPW4F("linear_transform output float:",l.outputs, l.output);
+ }
+diff --git a/src/parser.c b/src/parser.c
+index 9ffcd21..6dcd0d4 100644
+--- a/src/parser.c
++++ b/src/parser.c
+@@ -45,16 +45,6 @@ typedef struct{
+     list *options;
+ }section;
+ 
+-/* dump weigths first 8 bytes */
+-#define DUMPW(TAG, size, pw) fprintf(stderr, TAG "bufsize:%d [0-7]: %3u %3u %3u %3u %3u %3u %3u %3u\n",size, \
+-        ((unsigned char *)pw)[0], \
+-        ((unsigned char *)pw)[1], \
+-        ((unsigned char *)pw)[2], \
+-        ((unsigned char *)pw)[3], \
+-        ((unsigned char *)pw)[4], \
+-        ((unsigned char *)pw)[5], \
+-        ((unsigned char *)pw)[6], \
+-        ((unsigned char *)pw)[7])
+ 
+ list *read_cfg(char *filename);
+ 
+@@ -275,8 +265,7 @@ layer parse_lstm(list *options, size_params params)
+ 
+ layer parse_add_mask(list *options, size_params params)
+ {
+-    float rscalar = option_find_float(options, "rscalar",1);
+-    layer l = make_add_mask_layer(params.batch, params.h, params.w, params.c, rscalar);
++    layer l = make_add_mask_layer(params.batch, params.h, params.w, params.c);
+     return l;
+ }
+ 
+@@ -1022,6 +1011,7 @@ void save_convolutional_weights(layer l, FILE *fp)
+ 
+ void save_add_mask_weights(layer l, FILE *fp)
+ {
++    fwrite(l.rscalar, sizeof(float), 1, fp);
+     fwrite(l.weights, sizeof(float), l.outputs, fp);
+ }
+ 
+@@ -1189,25 +1179,25 @@ void load_connected_weights(layer l, FILE *fp, int transpose)
+ void load_add_mask_weights(layer l, FILE *fp)
+ {
+     fread(l.weights, sizeof(float), l.outputs, fp);
+-    DUMPW("add_mask w",l.outputs*4, l.weights);
+-    fread(&l.rscalar, sizeof(float), 1, fp);
+-    DUMPW("add_mask r",4, &l.rscalar);
++    DUMPW8("add_mask w",l.outputs*4, l.weights);
++    fread(l.rscalar, sizeof(float), 1, fp);
++    DUMPW8("add_mask r",4, l.rscalar);
+ }
+ 
+ void load_linear_transform_weights(layer l, FILE *fp)
+ {
+     fread(l.obfweights, sizeof(int), l.units*2, fp);
+-    DUMPW("linear_transform obfw",l.units*8, l.obfweights);
++    DUMPW8("linear_transform obfw",l.units*8, l.obfweights);
+     fread(l.rbias, sizeof(float), l.units, fp);
+-    DUMPW("linear_transform rbias",l.units*4,l.rbias);
++    DUMPW8("linear_transform rbias",l.units*4,l.rbias);
+ }
+ 
+ void load_shuffle_channel_weights(layer l, FILE *fp)
+ {
+     fread(l.obfweights, sizeof(int), l.units, fp);
+-    DUMPW("shuffle_channel obfw",l.units*4, l.obfweights);
++    DUMPW8("shuffle_channel obfw",l.units*4, l.obfweights);
+     fread(l.rbias, sizeof(float), l.units, fp);
+-    DUMPW("shuffle_channel rbias",l.units*4, l.rbias);
++    DUMPW8("shuffle_channel rbias",l.units*4, l.rbias);
+ }
+ 
+ void load_batchnorm_weights(layer l, FILE *fp)
+@@ -1261,7 +1251,7 @@ void load_convolutional_weights(layer l, FILE *fp)
+     if(l.numload) l.n = l.numload;
+     int num = l.c/l.groups*l.n*l.size*l.size;
+     fread(l.biases, sizeof(float), l.n, fp);
+-    DUMPW("conv bias",l.n*4, l.biases);
++    DUMPW8("conv bias",l.n*4, l.biases);
+     if (l.batch_normalize && (!l.dontloadscales)){
+         fread(l.scales, sizeof(float), l.n, fp);
+         fread(l.rolling_mean, sizeof(float), l.n, fp);
+@@ -1294,7 +1284,7 @@ void load_convolutional_weights(layer l, FILE *fp)
+         }
+     }
+     fread(l.weights, sizeof(float), num, fp);
+-    DUMPW("conv weights",num*4, l.weights);
++    DUMPW8("conv weights",num*4, l.weights);
+     //if(l.c == 3) scal_cpu(num, 1./256, l.weights, 1);
+     if (l.flipped) {
+         transpose_matrix(l.weights, l.c*l.size*l.size, l.n);
+@@ -1402,6 +1392,7 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
+             }
+ #endif
+         }
++        net->layers[i] = l;
+     }
+     fprintf(stderr, "Done!\n");
+     fclose(fp);
+diff --git a/src/utils.h b/src/utils.h
+index ef24da7..e0c6a4f 100644
+--- a/src/utils.h
++++ b/src/utils.h
+@@ -5,6 +5,36 @@
+ #include "darknet.h"
+ #include "list.h"
+ 
++/* dump weigths first 8 bytes */
++#define DUMPW4F(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %6f %6f %6f %6f\n",size, \
++        pw[0], \
++        pw[1], \
++        pw[2], \
++        pw[3])
++
++#define DUMPW4I(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %6d %6d %6d %6d\n",size, \
++        pw[0], \
++        pw[1], \
++        pw[2], \
++        pw[3]) 
++
++/* dump weigths first 8 bytes */
++#define DUMPW8(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %3u %3u %3u %3u %3u %3u %3u %3u\n",size, \
++        ((unsigned char *)pw)[0], \
++        ((unsigned char *)pw)[1], \
++        ((unsigned char *)pw)[2], \
++        ((unsigned char *)pw)[3], \
++        ((unsigned char *)pw)[4], \
++        ((unsigned char *)pw)[5], \
++        ((unsigned char *)pw)[6], \
++        ((unsigned char *)pw)[7])
++
++#define DUMPW4(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %3u %3u %3u %3u\n",size, \
++        ((unsigned char *)pw)[0], \
++        ((unsigned char *)pw)[1], \
++        ((unsigned char *)pw)[2], \
++        ((unsigned char *)pw)[3]) 
++
+ #define TIME(a) \
+     do { \
+     double start = what_time_is_it_now(); \
+-- 
+2.7.4
+

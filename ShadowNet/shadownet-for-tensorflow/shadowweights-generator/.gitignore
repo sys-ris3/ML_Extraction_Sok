@@ -1,0 +1,10 @@
+log
+*.log
+*.pyc
+*.tflite
+*.h5
+mobilenet-submodels/
+alexnet-submodels/
+minivgg-submodels/
+*.weights
+__pycache__/

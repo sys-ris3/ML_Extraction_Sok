@@ -1,0 +1,227 @@
+ACTIVATIONS_H	activations.h	2
+ACTIVATION_LAYER_H	activation_layer.h	2
+ADD_MASK_LAYER_H	add_mask_layer.h	2
+AVGPOOL_LAYER_H	avgpool_layer.h	2
+BATCHNORM_LAYER_H	batchnorm_layer.h	2
+BLAS_H	blas.h	2
+DROPOUT_LAYER_H	dropout_layer.h	2
+DUMPW4	utils.h	/^#define DUMPW4(TAG, size, pw) fprintf(stderr, TAG /
+DUMPW4	utils.h	/^#define DUMPW4(TAG, size, pw)$/
+DUMPW4F	utils.h	/^#define DUMPW4F(TAG, size, pw) fprintf(stderr, TAG/
+DUMPW4F	utils.h	/^#define DUMPW4F(TAG, size, pw) $/
+DUMPW4I	utils.h	/^#define DUMPW4I(TAG, size, pw) fprintf(stderr, TAG/
+DUMPW4I	utils.h	/^#define DUMPW4I(TAG, size, pw) $/
+DUMPW8	utils.h	/^#define DUMPW8(TAG, size, pw) fprintf(stderr, TAG /
+DUMPW8	utils.h	/^#define DUMPW8(TAG, size, pw)$/
+F1	math_TA.c	/^double F1(double x)$/
+F2	math_TA.c	/^double F2(double x)$/
+LINEAR_TRANSFORM_LAYER_H	linear_transform_layer.h	2
+LIST_H	list.h	2
+MAX_COPY	ta_cmds.c	112
+MAX_NET_NUM	ta_cmds.c	49
+NETS	ta_cmds.c	55
+NETWORK_H	network.h	3
+OPTION_LIST_H	option_list.h	2
+PARSER_H	parser.h	2
+SHUFFLE_CHANNEL_LAYER_H	shuffle_channel_layer.h	2
+SOFTMAX_LAYER_H	softmax_layer.h	2
+TA_CloseSessionEntryPoint	ta_cmds.c	/^void TA_CloseSessionEntryPoint(void __maybe_unused/
+TA_CreateEntryPoint	ta_cmds.c	/^TEE_Result TA_CreateEntryPoint(void)$/
+TA_DestroyEntryPoint	ta_cmds.c	/^void TA_DestroyEntryPoint(void)$/
+TA_InvokeCommandEntryPoint	ta_cmds.c	/^TEE_Result TA_InvokeCommandEntryPoint(void __maybe/
+TA_OpenSessionEntryPoint	ta_cmds.c	/^TEE_Result TA_OpenSessionEntryPoint(uint32_t param/
+TIME	utils.h	/^#define TIME(a) \\$/
+TWO_PI	utils.h	56
+UTILS_H	utils.h	2
+activate	activations.c	/^float activate(float x, ACTIVATION a)$/
+activate_array	activations.c	/^void activate_array(float *x, const int n, const A/
+add_bias	batchnorm_layer.c	/^void add_bias(float *output, float *biases, int ba/
+add_bias_nhwc	batchnorm_layer.c	/^void add_bias_nhwc(float *output, float *biases, i/
+alloc_netid	ta_cmds.c	/^int alloc_netid(void) {$/
+alphanum_to_int	utils.c	/^int alphanum_to_int(char c)$/
+asr	math_TA.c	/^double asr(double a, double b, double eps, double /
+asr0	math_TA.c	/^double asr0(double a, double b, double eps,int fla/
+atof	option_list.c	/^float atof(char *arr){$/
+atoi	option_list.c	/^int atoi(char* str) $/
+avgpool_layer	avgpool_layer.h	7
+batch	parser.c	65
+bubble_sort_top	math_TA.c	/^void bubble_sort_top(float *arr, int len) {$/
+c	parser.c	69
+constrain	utils.c	/^float constrain(float min, float max, float a)$/
+constrain_int	utils.c	/^int constrain_int(int a, int min, int max)$/
+copy_cpu	blas.c	/^void copy_cpu(int N, float *X, int INCX, float *Y,/
+copy_float	ta_cmds.c	/^void copy_float(float *src, float *dest, int size)/
+copy_int	ta_cmds.c	/^void copy_int(int *src, int *dest, int size){$/
+copy_string	utils.c	/^char *copy_string(char *s)$/
+count_fields	utils.c	/^int count_fields(char *line)$/
+dist_array	utils.c	/^float dist_array(float *a, float *b, int n, int su/
+dropout_layer	dropout_layer.h	7
+error	utils.c	/^void error(const char *s)$/
+fgetl	utils.c	/^char *fgetl(FILE *fp)$/
+file_error	utils.c	/^void file_error(char *s)$/
+fill_cpu	blas.c	/^void fill_cpu(int N, float ALPHA, float *X, int IN/
+forward_activation_layer	activation_layer.c	/^void forward_activation_layer(layer l, network net/
+forward_add_mask_layer	add_mask_layer.c	/^void forward_add_mask_layer(layer l, network net)$/
+forward_avgpool_layer	avgpool_layer.c	/^void forward_avgpool_layer(const avgpool_layer l, /
+forward_batchnorm_layer	batchnorm_layer.c	/^void forward_batchnorm_layer(layer l, network net)/
+forward_dropout_layer	dropout_layer.c	/^void forward_dropout_layer(dropout_layer __maybe_u/
+forward_linear_transform_layer	linear_transform_layer.c	/^void forward_linear_transform_layer(layer l, netwo/
+forward_network	network.c	/^void forward_network(network *netp)$/
+forward_shuffle_channel_layer	shuffle_channel_layer.c	/^void forward_shuffle_channel_layer(layer l, networ/
+forward_softmax_layer	softmax_layer.c	/^void forward_softmax_layer(const softmax_layer l, /
+free_layer	layer.c	/^void free_layer(layer l)$/
+free_list	list.c	/^void free_list(list *l)$/
+free_list_contents	list.c	/^void free_list_contents(list *l)$/
+free_network	network.c	/^void free_network(network *net)$/
+free_node	list.c	/^void free_node(node *n)$/
+free_ptrs	utils.c	/^void free_ptrs(void **ptrs, int n)$/
+free_section	parser.c	/^void free_section(section *s)$/
+ftoa	math_TA.c	/^void ftoa(float n, char *res, int afterpoint)$/
+get_activation	activations.c	/^ACTIVATION get_activation(char *s)$/
+get_activation_string	activations.c	/^char *get_activation_string(ACTIVATION a)$/
+get_layer_string	network.c	/^const char *get_layer_string(LAYER_TYPE a)$/
+get_network_output_layer	network.c	/^layer get_network_output_layer(network *net)$/
+get_predicted_class_network	network.c	/^int get_predicted_class_network(network *net)$/
+h	parser.c	67
+index	parser.c	70
+inputs	parser.c	66
+intToStr	math_TA.c	/^int intToStr(int x, char str[], int d)$/
+int_index	utils.c	/^int int_index(int *a, int val, int n)$/
+int_to_alphanum	utils.c	/^char int_to_alphanum(int i)$/
+is_network	parser.c	/^int is_network(section *s)$/
+key	option_list.h	7
+kvp	option_list.h	10
+list_insert	list.c	/^void list_insert(list *l, void *val)$/
+list_pop	list.c	/^void *list_pop(list *l){$/
+list_to_array	list.c	/^void **list_to_array(list *l)$/
+load_add_mask_weights	parser.c	/^void load_add_mask_weights(layer l, FILE *fp)$/
+load_batchnorm_weights	parser.c	/^void load_batchnorm_weights(layer l, FILE *fp)$/
+load_linear_transform_weights	parser.c	/^void load_linear_transform_weights(layer l, FILE */
+load_network	network.c	/^network *load_network(char *cfg, char *weights, in/
+load_shuffle_channel_weights	parser.c	/^void load_shuffle_channel_weights(layer l, FILE *f/
+load_weights	parser.c	/^void load_weights(network *net, char *filename)$/
+load_weights_ta_cmd	ta_cmds.c	/^static TEE_Result load_weights_ta_cmd(uint32_t par/
+load_weights_upto	parser.c	/^void load_weights_upto(network *net, char *filenam/
+mag_array	utils.c	/^float mag_array(float *a, int n)$/
+make_activation_layer	activation_layer.c	/^layer make_activation_layer(int batch, int inputs,/
+make_add_mask_layer	add_mask_layer.c	/^layer make_add_mask_layer(int batch, int h, int w,/
+make_avgpool_layer	avgpool_layer.c	/^avgpool_layer make_avgpool_layer(int batch, int w,/
+make_batchnorm_layer	batchnorm_layer.c	/^layer make_batchnorm_layer(int batch, int w, int h/
+make_dropout_layer	dropout_layer.c	/^dropout_layer make_dropout_layer(int __maybe_unuse/
+make_linear_transform_layer	linear_transform_layer.c	/^layer make_linear_transform_layer(int batch, int h/
+make_list	list.c	/^list *make_list()$/
+make_network	network.c	/^network *make_network(int n)$/
+make_shuffle_channel_layer	shuffle_channel_layer.c	/^layer make_shuffle_channel_layer(int batch, int h,/
+make_softmax_layer	softmax_layer.c	/^softmax_layer make_softmax_layer(int batch, int in/
+malloc_error	utils.c	/^void malloc_error()$/
+max_index	utils.c	/^int max_index(float *a, int n)$/
+max_int_index	utils.c	/^int max_int_index(int *a, int n)$/
+mean_array	utils.c	/^float mean_array(float *a, int n)$/
+mean_arrays	utils.c	/^void mean_arrays(float **a, int n, int els, float /
+mean_cpu	blas.c	/^void mean_cpu(float *x, int batch, int filters, in/
+mse_array	utils.c	/^float mse_array(float *a, int n)$/
+net	parser.c	71
+net_bucket	ta_cmds.c	53
+netparr	ta_cmds.c	51
+network_height	network.c	/^int network_height(network *net){return net->h;}$/
+network_inputs	network.c	/^int network_inputs(network *net)$/
+network_output	network.c	/^float *network_output(network *net)$/
+network_output_layer	network.c	/^layer network_output_layer(network *net)$/
+network_outputs	network.c	/^int network_outputs(network *net)$/
+network_predict	network.c	/^float *network_predict(network *net, float *input)/
+network_predict_ta_cmd	ta_cmds.c	/^static TEE_Result network_predict_ta_cmd(uint32_t /
+network_width	network.c	/^int network_width(network *net){return net->w;}$/
+noact_activate	activations.h	/^static inline float noact_activate(float x){return/
+normalize_array	utils.c	/^void normalize_array(float *a, int n)$/
+normalize_cpu	blas.c	/^void normalize_cpu(float *x, float *mean, float *v/
+normalize_cpu_nhwc	blas.c	/^void normalize_cpu_nhwc(float *x, float *mean, flo/
+one_hot_encode	utils.c	/^float **one_hot_encode(float *a, int n, int k)$/
+option_find	option_list.c	/^char *option_find(list *l, const char *key)$/
+option_find_float	option_list.c	/^float option_find_float(list *l, const char *key, /
+option_find_float_quiet	option_list.c	/^float option_find_float_quiet(list *l, const char /
+option_find_int	option_list.c	/^int option_find_int(list *l, const char *key, int /
+option_find_int_quiet	option_list.c	/^int option_find_int_quiet(list *l, const char *key/
+option_find_str	option_list.c	/^char *option_find_str(list *l, const char *key, co/
+option_insert	option_list.c	/^void option_insert(list *l, char *key, char *val)$/
+option_unused	option_list.c	/^void option_unused(list *l)$/
+options	parser.c	24
+parse_activation	parser.c	/^layer parse_activation(list *options, size_params /
+parse_add_mask	parser.c	/^layer parse_add_mask(list *options, size_params pa/
+parse_avgpool	parser.c	/^avgpool_layer parse_avgpool(list *options, size_pa/
+parse_batchnorm	parser.c	/^layer parse_batchnorm(list *options, size_params p/
+parse_csv_line	utils.c	/^list *parse_csv_line(char *line)$/
+parse_dropout	parser.c	/^dropout_layer parse_dropout(list *options, size_pa/
+parse_fields	utils.c	/^float *parse_fields(char *line, int n)$/
+parse_linear_transform	parser.c	/^layer parse_linear_transform(list *options, size_p/
+parse_net_options	parser.c	/^void parse_net_options(list *options, network *net/
+parse_network_cfg	parser.c	/^network *parse_network_cfg(char *filename)$/
+parse_network_cfg_from_buf	parser.c	/^network *parse_network_cfg_from_buf(char *cfg_buf)/
+parse_network_cfg_ta_cmd	ta_cmds.c	/^static TEE_Result parse_network_cfg_ta_cmd(uint32_/
+parse_network_cfg_wrapper	parser.c	/^network *parse_network_cfg_wrapper(char *filename)/
+parse_shuffle_channel	parser.c	/^layer parse_shuffle_channel(list *options, size_pa/
+parse_softmax	parser.c	/^layer parse_softmax(list *options, size_params par/
+pm	utils.c	/^void pm(int M, int N, float *A)$/
+print_statistics	utils.c	/^void print_statistics(float *a, int n)$/
+read_all	utils.c	/^void read_all(int fd, char *buffer, size_t bytes)$/
+read_all_fail	utils.c	/^int read_all_fail(int fd, char *buffer, size_t byt/
+read_cfg	parser.c	/^list *read_cfg(char *filename)$/
+read_cfg_from_buf	parser.c	/^list *read_cfg_from_buf(char * cfg_buf)$/
+read_data_cfg	option_list.c	/^list *read_data_cfg(char *filename)$/
+read_file	utils.c	/^unsigned char *read_file(char *filename)$/
+read_int	utils.c	/^int read_int(int fd)$/
+read_option	option_list.c	/^int read_option(char *s, list *options)$/
+relu6_activate	activations.h	/^static inline float relu6_activate(float x){return/
+relu_activate	activations.h	/^static inline float relu_activate(float x){return /
+resize_avgpool_layer	avgpool_layer.c	/^void resize_avgpool_layer(avgpool_layer *l, int w,/
+reverse	math_TA.c	/^void reverse(char *str, int len)$/
+save_add_mask_weights	parser.c	/^void save_add_mask_weights(layer l, FILE *fp)$/
+save_batchnorm_weights	parser.c	/^void save_batchnorm_weights(layer l, FILE *fp)$/
+save_linear_transform_weights	parser.c	/^void save_linear_transform_weights(layer l, FILE */
+save_shuffle_channel_weights	parser.c	/^void save_shuffle_channel_weights(layer l, FILE *f/
+save_weights	parser.c	/^void save_weights(network *net, char *filename)$/
+save_weights_upto	parser.c	/^void save_weights_upto(network *net, char *filenam/
+scale_array	utils.c	/^void scale_array(float *a, int n, float s)$/
+scale_bias	batchnorm_layer.c	/^void scale_bias(float *output, float *scales, int /
+scale_bias_nhwc	batchnorm_layer.c	/^void scale_bias_nhwc(float *output, float *scales,/
+sec	utils.c	/^float sec(clock_t clocks)$/
+section	parser.c	25
+set_batch_network	network.c	/^void set_batch_network(network *net, int b)$/
+simpson	math_TA.c	/^double simpson(double a, double b,int flag)$/
+size_params	parser.c	64
+size_params	parser.c	72
+softmax	blas.c	/^void softmax(float *input, int n, float temp, int /
+softmax_cpu	blas.c	/^void softmax_cpu(float *input, int n, int batch, i/
+softmax_layer	softmax_layer.h	6
+sp	parser.c	394
+split_str	utils.c	/^list *split_str(char *s, char delim)$/
+status	ta_cmds.c	52
+string_to_layer_type	parser.c	/^LAYER_TYPE string_to_layer_type(char * type)$/
+strip	utils.c	/^void strip(char *s)$/
+strip_char	utils.c	/^void strip_char(char *s, char bad)$/
+strtok	parser.c	/^char* strtok(char* str, const char* delimiters) {$/
+sum_array	utils.c	/^float sum_array(float *a, int n)$/
+ta_cos	math_TA.c	/^double ta_cos(double x)$/
+ta_eee	math_TA.c	/^double ta_eee(double x)$/
+ta_exp	math_TA.c	/^double ta_exp(double x)$/
+ta_floor	math_TA.c	/^int ta_floor(double x)$/
+ta_ln	math_TA.c	/^double ta_ln(double x)$/
+ta_log	math_TA.c	/^double ta_log(double a,double N)$/
+ta_max	math_TA.c	/^float ta_max(float a, float b)$/
+ta_pow	math_TA.c	/^double ta_pow(double a, int n)$/
+ta_rand	math_TA.c	/^ float ta_rand(void)$/
+ta_sin	math_TA.c	/^double ta_sin(double x)$/
+ta_sqrt	math_TA.c	/^double ta_sqrt(double x)$/
+ta_tan	math_TA.c	/^double ta_tan(double x)$/
+top_k	utils.c	/^void top_k(float *a, int n, int k, int *index)$/
+top_predictions	network.c	/^void top_predictions(network *net, int k, int *ind/
+translate_array	utils.c	/^void translate_array(float *a, int n, float s)$/
+type	parser.c	23
+used	option_list.h	9
+val	option_list.h	8
+variance_array	utils.c	/^float variance_array(float *a, int n)$/
+variance_cpu	blas.c	/^void variance_cpu(float *x, float *mean, int batch/
+w	parser.c	68
+what_time_is_it_now	utils.c	/^double what_time_is_it_now()$/
+write_all	utils.c	/^void write_all(int fd, char *buffer, size_t bytes)/
+write_all_fail	utils.c	/^int write_all_fail(int fd, char *buffer, size_t by/
+write_int	utils.c	/^void write_int(int fd, int n)$/

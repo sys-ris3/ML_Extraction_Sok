@@ -1,0 +1,70 @@
+From ff86755ec00e7aed5831847c734b7968c76f1973 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Thu, 14 May 2020 15:17:26 +0000
+Subject: [PATCH 6/9] darknet:add relu6 extension to darknet
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ src/activation_layer.c | 2 ++
+ src/activations.c      | 5 +++++
+ src/activations.h      | 1 +
+ 3 files changed, 8 insertions(+)
+
+diff --git a/src/activation_layer.c b/src/activation_layer.c
+index b4ba953..6ab7247 100644
+--- a/src/activation_layer.c
++++ b/src/activation_layer.c
+@@ -39,6 +39,8 @@ void forward_activation_layer(layer l, network net)
+ {
+     copy_cpu(l.outputs*l.batch, net.input, 1, l.output, 1);
+     activate_array(l.output, l.outputs*l.batch, l.activation);
++    DUMPW8("activation output bytes:",l.outputs, l.output);
++    DUMPW4F("activation output float:",l.outputs, l.output);
+ }
+ 
+ void backward_activation_layer(layer l, network net)
+diff --git a/src/activations.c b/src/activations.c
+index f407719..1c516aa 100644
+--- a/src/activations.c
++++ b/src/activations.c
+@@ -14,6 +14,8 @@ char *get_activation_string(ACTIVATION a)
+             return "loggy";
+         case RELU:
+             return "relu";
++        case RELU6:
++            return "relu6";
+         case ELU:
+             return "elu";
+         case SELU:
+@@ -49,6 +51,7 @@ ACTIVATION get_activation(char *s)
+     if (strcmp(s, "logistic")==0) return LOGISTIC;
+     if (strcmp(s, "loggy")==0) return LOGGY;
+     if (strcmp(s, "relu")==0) return RELU;
++    if (strcmp(s, "relu6")==0) return RELU6;
+     if (strcmp(s, "elu")==0) return ELU;
+     if (strcmp(s, "selu")==0) return SELU;
+     if (strcmp(s, "relie")==0) return RELIE;
+@@ -76,6 +79,8 @@ float activate(float x, ACTIVATION a)
+             return loggy_activate(x);
+         case RELU:
+             return relu_activate(x);
++        case RELU6:
++            return relu6_activate(x);
+         case ELU:
+             return elu_activate(x);
+         case SELU:
+diff --git a/src/activations.h b/src/activations.h
+index 4e149ae..bb35314 100644
+--- a/src/activations.h
++++ b/src/activations.h
+@@ -32,6 +32,7 @@ static inline float linear_activate(float x){return x;}
+ static inline float logistic_activate(float x){return 1./(1. + exp(-x));}
+ static inline float loggy_activate(float x){return 2./(1. + exp(-x)) - 1;}
+ static inline float relu_activate(float x){return x*(x>0);}
++static inline float relu6_activate(float x){return (x < 0.) ? 0 : (6.0 < x) ? 6.0: x;}
+ static inline float elu_activate(float x){return (x >= 0)*x + (x < 0)*(exp(x)-1);}
+ static inline float selu_activate(float x){return (x >= 0)*1.0507*x + (x < 0)*1.0507*1.6732*(exp(x)-1);}
+ static inline float relie_activate(float x){return (x>0) ? x : .01*x;}
+-- 
+2.7.4
+

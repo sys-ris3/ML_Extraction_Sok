@@ -1,0 +1,25 @@
+From 29d1d7d0de50203e9f1873934d81386fb8c13ae2 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Thu, 14 May 2020 15:19:37 +0000
+Subject: [PATCH 9/9] add libdarknet.so installation
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ Makefile | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Makefile b/Makefile
+index 28dd326..8ae7920 100644
+--- a/Makefile
++++ b/Makefile
+@@ -73,6 +73,7 @@ OBJS = $(addprefix $(OBJDIR), $(OBJ))
+ DEPS = $(wildcard src/*.h) Makefile include/darknet.h
+ 
+ all: obj backup results $(SLIB) $(ALIB) $(EXEC) $(BASIC)
++	cp libdarknet.so /lib/
+ #all: obj  results $(SLIB) $(ALIB) $(EXEC)
+ 
+ $(BASIC): $(BASICOBJ) $(ALIB)
+-- 
+2.7.4
+

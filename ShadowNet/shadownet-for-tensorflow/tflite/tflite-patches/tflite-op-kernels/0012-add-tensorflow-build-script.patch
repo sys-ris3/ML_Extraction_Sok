@@ -1,0 +1,44 @@
+From b4d4959a951e73e8bec8768838818ebb851ad670 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Fri, 14 Aug 2020 02:57:28 +0000
+Subject: [PATCH 12/12] add tensorflow build script
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ build_tensorflow.sh     | 3 +++
+ build_tflite_aar.sh     | 2 ++
+ build_tflite_aar_tee.sh | 3 +++
+ 3 files changed, 8 insertions(+)
+ create mode 100644 build_tensorflow.sh
+ create mode 100644 build_tflite_aar.sh
+ create mode 100644 build_tflite_aar_tee.sh
+
+diff --git a/build_tensorflow.sh b/build_tensorflow.sh
+new file mode 100644
+index 0000000..349fd30
+--- /dev/null
++++ b/build_tensorflow.sh
+@@ -0,0 +1,3 @@
++#./configure
++bazel build --config=opt --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0 --define=tflite_with_tee_emu=true //tensorflow/tools/pip_package:build_pip_package
++./bazel-bin/tensorflow/tools/pip_package/build_pip_package /mnt
+diff --git a/build_tflite_aar.sh b/build_tflite_aar.sh
+new file mode 100644
+index 0000000..461a064
+--- /dev/null
++++ b/build_tflite_aar.sh
+@@ -0,0 +1,2 @@
++bazel build -c opt --fat_apk_cpu=x86,x86_64,arm64-v8a,armeabi-v7a --host_crosstool_top=@bazel_tools//tools/cpp:toolchain   //tensorflow/lite/java:tensorflow-lite
++cp bazel-bin/tensorflow/lite/java/tensorflow-lite.aar /tmp/tensorflow_pkg/tensorflow-lite.aar.tee
+diff --git a/build_tflite_aar_tee.sh b/build_tflite_aar_tee.sh
+new file mode 100644
+index 0000000..2e91410
+--- /dev/null
++++ b/build_tflite_aar_tee.sh
+@@ -0,0 +1,3 @@
++bazel build -c opt --fat_apk_cpu=x86,x86_64,arm64-v8a,armeabi-v7a --define=tflite_with_tee=true  --host_crosstool_top=@bazel_tools//tools/cpp:toolchain   //tensorflow/lite/java:tensorflow-lite
++cp bazel-bin/tensorflow/lite/java/tensorflow-lite.aar /tmp/tensorflow-lite.aar.shadownet
++md5sum /tmp/tensorflow-lite.aar.shadownet
+-- 
+2.7.4
+

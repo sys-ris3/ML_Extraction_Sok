@@ -1,0 +1,1333 @@
+From 22111f25ce03d100c1c413c7df36dbce73366f7f Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Fri, 14 Aug 2020 15:11:23 -0400
+Subject: [PATCH] tflite-demo: add support for AlexNet and MiniVGG
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ .../java/demo/app/src/main/assets/.gitignore  |  4 +
+ .../Camera2BasicFragment.java                 | 62 +++++++++++-
+ .../tflitecamerademo/ImageClassifier.java     |  2 +-
+ .../ImageClassifierFloatAlexNet.java          | 99 +++++++++++++++++++
+ .../ImageClassifierFloatAlexNetObf.java       | 99 +++++++++++++++++++
+ .../ImageClassifierFloatAlexNetObfHH.java     | 99 +++++++++++++++++++
+ .../ImageClassifierFloatAlexNetSplit.java     | 99 +++++++++++++++++++
+ ...a => ImageClassifierFloatInceptionV3.java} | 42 ++++----
+ .../ImageClassifierFloatInceptionV3Obf.java   | 99 +++++++++++++++++++
+ .../ImageClassifierFloatInceptionV3ObfHH.java | 99 +++++++++++++++++++
+ .../ImageClassifierFloatMiniVGG.java          | 99 +++++++++++++++++++
+ .../ImageClassifierFloatMiniVGGObf.java       | 99 +++++++++++++++++++
+ .../ImageClassifierFloatMiniVGGObfHH.java     | 99 +++++++++++++++++++
+ .../ImageClassifierFloatMiniVGGSplit.java     | 99 +++++++++++++++++++
+ .../demo/app/src/main/res/values/strings.xml  | 12 ++-
+ 15 files changed, 1083 insertions(+), 29 deletions(-)
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/assets/.gitignore
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNet.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObf.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObfHH.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetSplit.java
+ rename tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/{ImageClassifierFloatInception.java => ImageClassifierFloatInceptionV3.java} (63%)
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3Obf.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3ObfHH.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGG.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObf.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObfHH.java
+ create mode 100644 tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGSplit.java
+
+diff --git a/tensorflow/lite/java/demo/app/src/main/assets/.gitignore b/tensorflow/lite/java/demo/app/src/main/assets/.gitignore
+new file mode 100644
+index 0000000000..97ac914a96
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/assets/.gitignore
+@@ -0,0 +1,4 @@
++*.tflite
++*.txt
++*.pbtxt
++*.png
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java
+index 9495e7963c..b44908b475 100644
+--- a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java
+@@ -157,6 +157,17 @@ public class Camera2BasicFragment extends Fragment
+   private String nomaskMobilenetV1Float;
+   private String onlypwMobilenetV1Float;
+   private String bhalfMobilenetV1Float;
++  private String AlexNetFloat;
++  private String AlexNetSplitFloat;
++  private String AlexNetObfFloat;
++  private String AlexNetObfHHFloat;
++  private String MiniVGGFloat;
++  private String MiniVGGSplitFloat;
++  private String MiniVGGObfFloat;
++  private String MiniVGGObfHHFloat;
++  private String InceptionV3Float;
++  private String InceptionV3ObfFloat;
++  private String InceptionV3ObfHHFloat;
+ 
+ 
+ 
+@@ -418,6 +429,28 @@ public class Camera2BasicFragment extends Fragment
+           classifier = new ImageClassifierObfOnlypwMobileNet(getActivity());
+         } else if (model.equals(bhalfMobilenetV1Float)) {
+           classifier = new ImageClassifierObfBhalfMobileNet(getActivity());
++        } else if (model.equals(AlexNetFloat)) {
++          classifier = new ImageClassifierFloatAlexNet(getActivity());
++        } else if (model.equals(AlexNetObfFloat)) {
++          classifier = new ImageClassifierFloatAlexNetObf(getActivity());
++        } else if (model.equals(AlexNetObfHHFloat)) {
++          classifier = new ImageClassifierFloatAlexNetObfHH(getActivity());
++        } else if (model.equals(AlexNetSplitFloat)) {
++          classifier = new ImageClassifierFloatAlexNetSplit(getActivity());
++        } else if (model.equals(MiniVGGFloat)) {
++          classifier = new ImageClassifierFloatMiniVGG(getActivity());
++        } else if (model.equals(MiniVGGSplitFloat)) {
++          classifier = new ImageClassifierFloatMiniVGGSplit(getActivity());
++        } else if (model.equals(MiniVGGObfFloat)) {
++          classifier = new ImageClassifierFloatMiniVGGObf(getActivity());
++        } else if (model.equals(MiniVGGObfHHFloat)) {
++          classifier = new ImageClassifierFloatMiniVGGObfHH(getActivity());
++        } else if (model.equals(InceptionV3Float)) {
++          classifier = new ImageClassifierFloatInceptionV3(getActivity());
++        } else if (model.equals(InceptionV3ObfFloat)) {
++          classifier = new ImageClassifierFloatInceptionV3Obf(getActivity());
++        } else if (model.equals(InceptionV3ObfHHFloat)) {
++          classifier = new ImageClassifierFloatInceptionV3ObfHH(getActivity());
+         } else {
+           showToast("Failed to load model");
+         }
+@@ -458,7 +491,17 @@ public class Camera2BasicFragment extends Fragment
+     nomaskMobilenetV1Float = getString(R.string.nomaskMobilenetV1Float);
+     onlypwMobilenetV1Float = getString(R.string.onlypwMobilenetV1Float);
+     bhalfMobilenetV1Float = getString(R.string.bhalfMobilenetV1Float);
+-
++    AlexNetFloat = getString(R.string.alexNetFloat);
++    AlexNetSplitFloat = getString(R.string.alexNetSplitFloat);
++    AlexNetObfFloat = getString(R.string.alexNetObfFloat);
++    AlexNetObfHHFloat = getString(R.string.alexNetObfHHFloat);
++    MiniVGGFloat = getString(R.string.miniVGGFloat);
++    MiniVGGSplitFloat = getString(R.string.miniVGGSplitFloat);
++    MiniVGGObfFloat = getString(R.string.miniVGGObfFloat);
++    MiniVGGObfHHFloat = getString(R.string.miniVGGObfHHFloat);
++    InceptionV3Float = getString(R.string.inceptionV3Float);
++    InceptionV3ObfFloat = getString(R.string.inceptionV3ObfFloat);
++    InceptionV3ObfHHFloat = getString(R.string.inceptionV3ObfHHFloat);
+ 
+ 
+ 
+@@ -471,13 +514,26 @@ public class Camera2BasicFragment extends Fragment
+ 
+     // Build list of models
+ 
++
++    modelStrings.add(AlexNetSplitFloat);
++    modelStrings.add(AlexNetObfFloat);
++    modelStrings.add(MiniVGGSplitFloat);
+     modelStrings.add(splitMobilenetV1Float);
++    modelStrings.add(obfMobilenetV1Float);
++    modelStrings.add(InceptionV3ObfHHFloat);
++    modelStrings.add(MiniVGGObfHHFloat);
++    modelStrings.add(AlexNetFloat);
++    modelStrings.add(AlexNetObfHHFloat);
++    modelStrings.add(InceptionV3ObfFloat);
++    modelStrings.add(InceptionV3Float);
++    modelStrings.add(MiniVGGFloat);
++    modelStrings.add(MiniVGGObfFloat);
+     modelStrings.add(bhalfMobilenetV1Float);
+     modelStrings.add(onlypwMobilenetV1Float);
+     modelStrings.add(nomaskMobilenetV1Float);
+     modelStrings.add(mobilenetV1Quant);
+     modelStrings.add(mobilenetV1Float);
+-    modelStrings.add(obfMobilenetV1Float);
++
+ 
+ 
+     // Build list of devices
+@@ -906,7 +962,7 @@ public class Camera2BasicFragment extends Fragment
+       // showToast("Uninitialized Classifier or invalid context.");
+       return;
+     }
+-    Log.i(TAG, "SUNZHI:load bitmap test.bmp and classify it");
++    //Log.i(TAG, "SUNZHI:load bitmap test.bmp and classify it");
+     SpannableStringBuilder textToShow = new SpannableStringBuilder();
+     //Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
+     BitmapFactory.Options options = new BitmapFactory.Options();
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifier.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifier.java
+index 9dc5eaebdd..1c5b3c004c 100644
+--- a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifier.java
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifier.java
+@@ -254,7 +254,7 @@ public abstract class ImageClassifier {
+       }
+     }
+     long endTime = SystemClock.uptimeMillis();
+-    Log.d(TAG, "Timecost to put values into ByteBuffer: " + Long.toString(endTime - startTime));
++    //Log.d(TAG, "Timecost to put values into ByteBuffer: " + Long.toString(endTime - startTime));
+   }
+ 
+   /** Prints top-K labels, to be shown in UI as the results. */
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNet.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNet.java
+new file mode 100644
+index 0000000000..04d4716474
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNet.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatAlexNet extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatAlexNet(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "alexnet.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 227;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 227;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObf.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObf.java
+new file mode 100644
+index 0000000000..3aa670fd4d
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObf.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatAlexNetObf extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatAlexNetObf(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "alexnetobf.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 227;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 227;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObfHH.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObfHH.java
+new file mode 100644
+index 0000000000..e916856775
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetObfHH.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatAlexNetObfHH extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatAlexNetObfHH(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "alexnetobfhh.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 227;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 227;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetSplit.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetSplit.java
+new file mode 100644
+index 0000000000..8d37563c40
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatAlexNetSplit.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatAlexNetSplit extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatAlexNetSplit(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "alexnetsplit_new.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 227;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 227;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInception.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3.java
+similarity index 63%
+rename from tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInception.java
+rename to tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3.java
+index be17b85e0c..7ceb1b227f 100644
+--- a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInception.java
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3.java
+@@ -1,4 +1,4 @@
+-/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+ 
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+@@ -19,44 +19,40 @@ import android.app.Activity;
+ 
+ import java.io.IOException;
+ 
+-/**
+- * This classifier works with the Inception-v3 slim model.
+- * It applies floating point inference rather than using a quantized model.
+- */
+-public class ImageClassifierFloatInception extends ImageClassifier {
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatInceptionV3 extends ImageClassifier {
+ 
+-  /**
+-   * The inception net requires additional normalization of the used input.
+-   */
+-  private static final int IMAGE_MEAN = 128;
+-  private static final float IMAGE_STD = 128.0f;
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
+ 
+   /**
+-   * An array to hold inference results, to be feed into Tensorflow Lite as outputs.
+-   * This isn't part of the super class, because we need a primitive array here.
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
+    */
+   private float[][] labelProbArray = null;
+-
+   /**
+-   * Initializes an {@code ImageClassifier}.
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
+    *
+    * @param activity
+    */
+-  ImageClassifierFloatInception(Activity activity) throws IOException {
++  ImageClassifierFloatInceptionV3(Activity activity) throws IOException {
+     super(activity);
+-    labelProbArray = new float[1][getNumLabels()];
++      labelProbArray = new float[1][getNumLabels()];
+   }
+ 
+   @Override
+   protected String getModelPath() {
+     // you can download this file from
+-    // https://storage.googleapis.com/download.tensorflow.org/models/tflite/inception_v3_slim_2016_android_2017_11_10.zip
+-    return "inceptionv3_slim_2016.tflite";
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "inception_v3.tflite";
+   }
+ 
+   @Override
+   protected String getLabelPath() {
+-    return "labels_imagenet_slim.txt";
++    return "labels_imagenet_mobilenet_obf.txt";
+   }
+ 
+   @Override
+@@ -71,8 +67,7 @@ public class ImageClassifierFloatInception extends ImageClassifier {
+ 
+   @Override
+   protected int getNumBytesPerChannel() {
+-    // a 32bit float value requires 4 bytes
+-    return 4;
++    return 4; // Float.SIZE / Byte.SIZE;
+   }
+ 
+   @Override
+@@ -94,8 +89,7 @@ public class ImageClassifierFloatInception extends ImageClassifier {
+ 
+   @Override
+   protected float getNormalizedProbability(int labelIndex) {
+-    // TODO the following value isn't in [0,1] yet, but may be greater. Why?
+-    return getProbability(labelIndex);
++    return labelProbArray[0][labelIndex];
+   }
+ 
+   @Override
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3Obf.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3Obf.java
+new file mode 100644
+index 0000000000..d6b8f3e086
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3Obf.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatInceptionV3Obf extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatInceptionV3Obf(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "inception_v3_obf.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 299;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 299;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3ObfHH.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3ObfHH.java
+new file mode 100644
+index 0000000000..0cb613045b
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatInceptionV3ObfHH.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatInceptionV3ObfHH extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatInceptionV3ObfHH(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "inception_v3_obfhh.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 299;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 299;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGG.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGG.java
+new file mode 100644
+index 0000000000..218bf3b837
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGG.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatMiniVGG extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatMiniVGG(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "minivgg.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 64;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 64;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObf.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObf.java
+new file mode 100644
+index 0000000000..934a270e6b
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObf.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatMiniVGGObf extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatMiniVGGObf(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "minivggobf.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 64;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 64;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObfHH.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObfHH.java
+new file mode 100644
+index 0000000000..9a135d1b6c
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGObfHH.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatMiniVGGObfHH extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatMiniVGGObfHH(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "minivggobfhh.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 64;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 64;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGSplit.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGSplit.java
+new file mode 100644
+index 0000000000..628ae9131a
+--- /dev/null
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/ImageClassifierFloatMiniVGGSplit.java
+@@ -0,0 +1,99 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++package com.example.android.tflitecamerademo;
++
++import android.app.Activity;
++
++import java.io.IOException;
++
++/** This classifier works with the float MobileNet model. */
++public class ImageClassifierFloatMiniVGGSplit extends ImageClassifier {
++
++  /** The mobile net requires additional normalization of the used input. */
++  private static final float IMAGE_MEAN = 127.5f;
++
++  private static final float IMAGE_STD = 127.5f;
++
++  /**
++   * An array to hold inference results, to be feed into Tensorflow Lite as outputs. This isn't part
++   * of the super class, because we need a primitive array here.
++   */
++  private float[][] labelProbArray = null;
++  /**
++   * Initializes an {@code ImageClassifierFloatMobileNet}.
++   *
++   * @param activity
++   */
++  ImageClassifierFloatMiniVGGSplit(Activity activity) throws IOException {
++    super(activity);
++      labelProbArray = new float[1][getNumLabels()];
++  }
++
++  @Override
++  protected String getModelPath() {
++    // you can download this file from
++    // see build.gradle for where to obtain this file. It should be auto
++    // downloaded into assets.
++    return "minivggsplit_new.tflite";
++  }
++
++  @Override
++  protected String getLabelPath() {
++    return "labels_imagenet_mobilenet_obf.txt";
++  }
++
++  @Override
++  protected int getImageSizeX() {
++    return 64;
++  }
++
++  @Override
++  protected int getImageSizeY() {
++    return 64;
++  }
++
++  @Override
++  protected int getNumBytesPerChannel() {
++    return 4; // Float.SIZE / Byte.SIZE;
++  }
++
++  @Override
++  protected void addPixelValue(int pixelValue) {
++    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
++  }
++
++  @Override
++  protected float getProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void setProbability(int labelIndex, Number value) {
++    labelProbArray[0][labelIndex] = value.floatValue();
++  }
++
++  @Override
++  protected float getNormalizedProbability(int labelIndex) {
++    return labelProbArray[0][labelIndex];
++  }
++
++  @Override
++  protected void runInference() {
++    tflite.run(imgData, labelProbArray);
++  }
++}
+diff --git a/tensorflow/lite/java/demo/app/src/main/res/values/strings.xml b/tensorflow/lite/java/demo/app/src/main/res/values/strings.xml
+index 838f7a1e62..c9da037464 100644
+--- a/tensorflow/lite/java/demo/app/src/main/res/values/strings.xml
++++ b/tensorflow/lite/java/demo/app/src/main/res/values/strings.xml
+@@ -34,5 +34,15 @@
+     <string name="nomaskMobilenetV1Float">Nomask mobilenet v1 float</string>
+     <string name="onlypwMobilenetV1Float">Onlypw mobilenet v1 float</string>
+     <string name="bhalfMobilenetV1Float">Bhalf mobilenet v1 float</string>
+-
++    <string name="alexNetFloat">AlexNet float</string>
++    <string name="alexNetSplitFloat">AlexNetSplit float</string>
++    <string name="alexNetObfFloat">AlexNetObf float</string>
++    <string name="alexNetObfHHFloat">AlexNetObf Half-Half float</string>
++    <string name="miniVGGFloat">MiniVGG float</string>
++    <string name="miniVGGSplitFloat">MiniVGGSplit float</string>
++    <string name="miniVGGObfFloat">MiniVGGObf float</string>
++    <string name="miniVGGObfHHFloat">MiniVGGObf HHfloat</string>
++    <string name="inceptionV3Float">Inception V3 float</string>
++    <string name="inceptionV3ObfFloat">Inception V3 Obf float</string>
++    <string name="inceptionV3ObfHHFloat">Inception V3 Obf HH float</string>
+ </resources>
+-- 
+2.17.1
+

@@ -1,0 +1,55 @@
+From 51c6f7533a75803aeb0276af16b18d599b23b626 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Thu, 27 May 2021 03:32:30 +0000
+Subject: [PATCH 13/16] tflite add tee_shadow support for input/output size
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ tensorflow/lite/kernels/tee_shadow.cc         |  9 ++++++++-
+ tensorflow/lite/kernels/tee_shadow_generic.cc | 10 +++++++++-
+ 2 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/tensorflow/lite/kernels/tee_shadow.cc b/tensorflow/lite/kernels/tee_shadow.cc
+index 953d30d..b321518 100644
+--- a/tensorflow/lite/kernels/tee_shadow.cc
++++ b/tensorflow/lite/kernels/tee_shadow.cc
+@@ -113,7 +113,14 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+   float* output_flat = GetTensorData<float>(output);
+ 
+   const char *shadow_pos = params->pos.c_str();
+-  darknet_predict(shadow_pos, x_flat, output_flat);
++  unsigned input_size, output_size;
++  tflite::RuntimeShape input_shape = GetTensorShape(input_x);
++  tflite::RuntimeShape output_shape = GetTensorShape(output);
++
++  input_size = input_shape.FlatSize() * 4;
++  output_size = output_shape.FlatSize() * 4;
++
++  darknet_predict(shadow_pos, input_size, x_flat, output_size, output_flat);
+ 
+   return kTfLiteOk;
+ }
+diff --git a/tensorflow/lite/kernels/tee_shadow_generic.cc b/tensorflow/lite/kernels/tee_shadow_generic.cc
+index f74c511..10e08d5 100644
+--- a/tensorflow/lite/kernels/tee_shadow_generic.cc
++++ b/tensorflow/lite/kernels/tee_shadow_generic.cc
+@@ -105,7 +105,15 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+   float* output_flat = GetTensorData<float>(output);
+ 
+   const char *shadow_pos = params->pos.c_str();
+-  darknet_predict(shadow_pos, x_flat, output_flat);
++  unsigned input_size, output_size;
++
++  tflite::RuntimeShape input_shape = GetTensorShape(input_x);
++  tflite::RuntimeShape output_shape = GetTensorShape(output);
++
++  input_size = input_shape.FlatSize() * 4;
++  output_size = output_shape.FlatSize() * 4;
++
++  darknet_predict(shadow_pos, input_size, x_flat, output_size, output_flat);
+ 
+   return kTfLiteOk;
+ }
+-- 
+2.7.4
+

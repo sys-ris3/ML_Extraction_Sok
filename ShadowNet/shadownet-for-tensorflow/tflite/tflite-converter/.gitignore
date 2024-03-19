@@ -1,0 +1,11 @@
+*.h5
+*.tflite
+*.npy
+__pycache__/
+*.swp
+log*
+*.pyc
+*.bin
+mobilenet_v1_1.0_224.tflite.backup
+*.input
+tflite_convert_test.py

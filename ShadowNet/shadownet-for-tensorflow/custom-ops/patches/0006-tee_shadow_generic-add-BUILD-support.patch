@@ -1,0 +1,62 @@
+From 4c7fd57cba9a802e7372638b489559aba2ff0f1e Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Wed, 29 Jul 2020 22:14:31 +0000
+Subject: [PATCH 6/9] tee_shadow_generic: add BUILD support
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ BUILD            | 1 +
+ MANIFEST.in      | 1 +
+ WORKSPACE        | 6 ++++++
+ build_pip_pkg.sh | 1 +
+ 4 files changed, 9 insertions(+)
+
+diff --git a/BUILD b/BUILD
+index 4bfd4d7..867e7ae 100644
+--- a/BUILD
++++ b/BUILD
+@@ -11,5 +11,6 @@ sh_binary(
+         "//tensorflow_linear_transform:linear_transform_py",
+         "//tensorflow_shuffle_channel:shuffle_channel_py",
+         "//tensorflow_tee_shadow:tee_shadow_py",
++        "//tensorflow_tee_shadow_generic:tee_shadow_generic_py",
+     ],
+ )
+diff --git a/MANIFEST.in b/MANIFEST.in
+index 29f92c4..c446af9 100644
+--- a/MANIFEST.in
++++ b/MANIFEST.in
+@@ -4,3 +4,4 @@ recursive-include tensorflow_add_mask *.so
+ recursive-include tensorflow_linear_transform *.so
+ recursive-include tensorflow_shuffle_channel *.so
+ recursive-include tensorflow_tee_shadow *.so
++recursive-include tensorflow_tee_shadow_generic *.so
+diff --git a/WORKSPACE b/WORKSPACE
+index cab2e2d..4196979 100644
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -14,3 +14,9 @@ new_git_repository(
+     branch= "master",
+     remote = "/root/darknet",
+ )
++
++new_local_repository(
++    name = "darknetes",
++    path = "/root/tensorflow/third_party/optee_delegate/darknet_ca/",
++    build_file = "//third_party/darknet:darknetes.BUILD"
++)
+diff --git a/build_pip_pkg.sh b/build_pip_pkg.sh
+index 3c15481..86c000a 100755
+--- a/build_pip_pkg.sh
++++ b/build_pip_pkg.sh
+@@ -73,6 +73,7 @@ function main() {
+   rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_linear_transform "${TMPDIR}"
+   rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_shuffle_channel "${TMPDIR}"
+   rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_tee_shadow "${TMPDIR}"
++  rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_tee_shadow_generic "${TMPDIR}"
+ 
+   pushd ${TMPDIR}
+   echo $(date) : "=== Building wheel"
+-- 
+2.7.4
+

@@ -1,0 +1,161 @@
+From 64bfef77e1393ab584badc955f23ba9ac1e478cc Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Thu, 14 May 2020 15:18:47 +0000
+Subject: [PATCH 8/9] add nhwc support for batchnorm layer
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ src/batchnorm_layer.c     | 26 +++++++++++++++++++++++---
+ src/blas.c                | 14 ++++++++++++++
+ src/blas.h                |  1 +
+ src/convolutional_layer.c | 24 ++++++++++++++++++++++++
+ src/convolutional_layer.h |  1 +
+ 5 files changed, 63 insertions(+), 3 deletions(-)
+
+diff --git a/src/batchnorm_layer.c b/src/batchnorm_layer.c
+index ebff387..c9aa875 100644
+--- a/src/batchnorm_layer.c
++++ b/src/batchnorm_layer.c
+@@ -1,6 +1,7 @@
+ #include "convolutional_layer.h"
+ #include "batchnorm_layer.h"
+ #include "blas.h"
++#include "utils.h"
+ #include <stdio.h>
+ 
+ layer make_batchnorm_layer(int batch, int w, int h, int c)
+@@ -134,7 +135,14 @@ void resize_batchnorm_layer(layer *layer, int w, int h)
+ 
+ void forward_batchnorm_layer(layer l, network net)
+ {
++    printf("forward_bn\n");
+     if(l.type == BATCHNORM) copy_cpu(l.outputs*l.batch, net.input, 1, l.output, 1);
++    if(l.nhwc == 1) {
++        if (!l.x){
++            l.x = calloc(l.batch*l.outputs, sizeof(float));
++        } 
++    }
++    // TODO remove the following layer for speed
+     copy_cpu(l.outputs*l.batch, l.output, 1, l.x, 1);
+     if(net.train){
+         mean_cpu(l.output, l.batch, l.out_c, l.out_h*l.out_w, l.mean);
+@@ -148,10 +156,22 @@ void forward_batchnorm_layer(layer l, network net)
+         normalize_cpu(l.output, l.mean, l.variance, l.batch, l.out_c, l.out_h*l.out_w);   
+         copy_cpu(l.outputs*l.batch, l.output, 1, l.x_norm, 1);
+     } else {
+-        normalize_cpu(l.output, l.rolling_mean, l.rolling_variance, l.batch, l.out_c, l.out_h*l.out_w);
++        if (l.nhwc == 1) {
++            normalize_cpu_nhwc(l.output, l.rolling_mean, l.rolling_variance, l.batch, l.out_c, l.out_h*l.out_w);
++        } else {
++            normalize_cpu(l.output, l.rolling_mean, l.rolling_variance, l.batch, l.out_c, l.out_h*l.out_w);
++        }
+     }
+-    scale_bias(l.output, l.scales, l.batch, l.out_c, l.out_h*l.out_w);
+-    add_bias(l.output, l.biases, l.batch, l.out_c, l.out_h*l.out_w);
++    if (l.nhwc == 1) {
++        scale_bias_nhwc(l.output, l.scales, l.batch, l.out_c, l.out_h*l.out_w);
++        add_bias_nhwc(l.output, l.biases, l.batch, l.out_c, l.out_h*l.out_w);
++    } else {
++        scale_bias(l.output, l.scales, l.batch, l.out_c, l.out_h*l.out_w);
++        add_bias(l.output, l.biases, l.batch, l.out_c, l.out_h*l.out_w);
++    }
++
++    DUMPW8("batchnorm output bytes:",l.outputs, l.output);
++    DUMPW4F("batchnorm output float:",l.outputs, l.output);
+ }
+ 
+ void backward_batchnorm_layer(layer l, network net)
+diff --git a/src/blas.c b/src/blas.c
+index 9e16044..e6fe08c 100644
+--- a/src/blas.c
++++ b/src/blas.c
+@@ -157,6 +157,20 @@ void normalize_cpu(float *x, float *mean, float *variance, int batch, int filter
+     }
+ }
+ 
++void normalize_cpu_nhwc(float *x, float *mean, float *variance, int batch, int filters, int spatial)
++{
++    int b, f, i;
++    for(b = 0; b < batch; ++b){
++        for(f = 0; f < filters; ++f){
++            for(i = 0; i < spatial; ++i){
++                int index = b*filters*spatial + i*filters+ f;
++                //x[index] = (x[index] - mean[f])/(sqrt(variance[f]) + .000001f);
++                x[index] = (x[index] - mean[f])/(sqrt(variance[f] + .001f));
++            }
++        }
++    }
++}
++
+ void const_cpu(int N, float ALPHA, float *X, int INCX)
+ {
+     int i;
+diff --git a/src/blas.h b/src/blas.h
+index 707291d..66e6d4b 100644
+--- a/src/blas.h
++++ b/src/blas.h
+@@ -26,6 +26,7 @@ void mean_cpu(float *x, int batch, int filters, int spatial, float *mean);
+ void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, float *variance);
+ 
+ void scale_bias(float *output, float *scales, int batch, int n, int size);
++void scale_bias_nhwc(float *output, float *scales, int batch, int n, int size);
+ void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates);
+ void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta);
+ void  variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta);
+diff --git a/src/convolutional_layer.c b/src/convolutional_layer.c
+index 29be3f6..333e21f 100644
+--- a/src/convolutional_layer.c
++++ b/src/convolutional_layer.c
+@@ -420,6 +420,18 @@ void add_bias(float *output, float *biases, int batch, int n, int size)
+     }
+ }
+ 
++void add_bias_nhwc(float *output, float *biases, int batch, int n, int size)
++{
++    int i,j,b;
++    for(b = 0; b < batch; ++b){
++        for(i = 0; i < n; ++i){
++            for(j = 0; j < size; ++j){
++                output[(b*size + j)*n + i] += biases[i];
++            }
++        }
++    }
++}
++
+ void scale_bias(float *output, float *scales, int batch, int n, int size)
+ {
+     int i,j,b;
+@@ -432,6 +444,18 @@ void scale_bias(float *output, float *scales, int batch, int n, int size)
+     }
+ }
+ 
++void scale_bias_nhwc(float *output, float *scales, int batch, int n, int size)
++{
++    int i,j,b;
++    for(b = 0; b < batch; ++b){
++        for(i = 0; i < n; ++i){
++            for(j = 0; j < size; ++j){
++                output[(b*size + j)*n + i] *= scales[i];
++            }
++        }
++    }
++}
++
+ void backward_bias(float *bias_updates, float *delta, int batch, int n, int size)
+ {
+     int i,b;
+diff --git a/src/convolutional_layer.h b/src/convolutional_layer.h
+index 6c261f5..37a8e9e 100644
+--- a/src/convolutional_layer.h
++++ b/src/convolutional_layer.h
+@@ -37,6 +37,7 @@ void binarize_weights2(float *weights, int n, int size, char *binary, float *sca
+ void backward_convolutional_layer(convolutional_layer layer, network net);
+ 
+ void add_bias(float *output, float *biases, int batch, int n, int size);
++void add_bias_nhwc(float *output, float *biases, int batch, int n, int size);
+ void backward_bias(float *bias_updates, float *delta, int batch, int n, int size);
+ 
+ image get_convolutional_image(convolutional_layer layer);
+-- 
+2.7.4
+

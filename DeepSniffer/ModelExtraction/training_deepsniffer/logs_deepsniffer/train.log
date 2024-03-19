@@ -1,0 +1,16 @@
+
+-----------------------------------------------------------------
+Starting new training run
+-----------------------------------------------------------------
+[2019-12-09 23:34:10.770]  Checkpoint path: /home/xhu/Security/NN_Extraction/DeepSniffer/ModelExtraction/training_deepsniffer/logs_deepsniffer/model.ckpt
+[2019-12-09 23:34:10.770]  Loading training data from: /home/xhu/Security/NN_Extraction/DeepSniffer/ModelExtraction/training_deepsniffer/../dataset/training_randomgraphs/train.txt
+[2019-12-09 23:34:10.770]  Using model: deepsniffer
+[2019-12-09 23:34:12.253]  Starting new training run
+
+-----------------------------------------------------------------
+Starting new training run
+-----------------------------------------------------------------
+[2019-12-09 23:44:28.079]  Checkpoint path: /home/xhu/Security/NN_Extraction/DeepSniffer/ModelExtraction/training_deepsniffer/logs_deepsniffer/model.ckpt
+[2019-12-09 23:44:28.079]  Loading training data from: /home/xhu/Security/NN_Extraction/DeepSniffer/ModelExtraction/training_deepsniffer/../dataset/training_randomgraphs/train.txt
+[2019-12-09 23:44:28.079]  Using model: deepsniffer
+[2019-12-09 23:44:29.543]  Starting new training run

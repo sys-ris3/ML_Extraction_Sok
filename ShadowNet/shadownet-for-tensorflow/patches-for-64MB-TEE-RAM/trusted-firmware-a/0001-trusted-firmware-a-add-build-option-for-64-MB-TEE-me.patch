@@ -1,0 +1,46 @@
+From 9d9c89bc8299f0b81ec401e18af692141db331eb Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+Date: Wed, 28 Apr 2021 14:19:39 -0400
+Subject: [PATCH] trusted-firmware-a add build option for 64 MB TEE memory
+
+Signed-off-by: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+---
+ plat/hisilicon/hikey960/hikey960_def.h | 5 +++++
+ plat/hisilicon/hikey960/platform.mk    | 6 ++++++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/plat/hisilicon/hikey960/hikey960_def.h b/plat/hisilicon/hikey960/hikey960_def.h
+index 9651d78..eba81e4 100644
+--- a/plat/hisilicon/hikey960/hikey960_def.h
++++ b/plat/hisilicon/hikey960/hikey960_def.h
+@@ -28,8 +28,13 @@
+  *   - Secure DDR (4MB aligned on 4MB) for OP-TEE's "Secure Data Path" feature
+  *   - Non-secure DDR (8MB) reserved for OP-TEE's future use
+  */
++#ifdef HIKEY960_TZRAM_64MB
++#define DDR_SEC_SIZE			0x04000000
++#define DDR_SEC_BASE			0x3C000000
++#else
+ #define DDR_SEC_SIZE			0x01000000
+ #define DDR_SEC_BASE			0x3F000000
++#endif
+ 
+ #define DDR_SDP_SIZE			0x00400000
+ #define DDR_SDP_BASE			(DDR_SEC_BASE - 0x400000 /* align */ - \
+diff --git a/plat/hisilicon/hikey960/platform.mk b/plat/hisilicon/hikey960/platform.mk
+index fc2c209..4dc3393 100644
+--- a/plat/hisilicon/hikey960/platform.mk
++++ b/plat/hisilicon/hikey960/platform.mk
+@@ -156,3 +156,9 @@ ERRATA_A53_843419		:=	1
+ ERRATA_A53_855873		:=	1
+ 
+ FIP_ALIGN			:=	512
++
++# Enable TZRAM size 64 MB
++#ifeq ($(CFG_TZRAM_SIZE),64)
++$(info CFG_TZRAM_SIZE=64, enable TZRAM size 64 MB)
++$(eval $(call add_define,HIKEY960_TZRAM_64MB))
++#endif
+-- 
+2.7.4
+

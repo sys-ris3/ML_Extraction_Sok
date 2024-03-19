@@ -1,0 +1,13 @@
+(vntf22) root@a3dbb3669c7e:~/ModelSafe-Code/modelsafe/shadownet-for-tensorflow/quantization# python alexnet_train.py 
+2021-10-08 06:28:27.669799: I tensorflow/core/platform/profile_utils/cpu_utils.cc:102] CPU Frequency: 2194840000 Hz
+2021-10-08 06:28:27.672377: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x4fe1d30 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2021-10-08 06:28:27.672446: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+Found 5000 images belonging to 10 classes.
+Found 320 images belonging to 10 classes.
+Epoch 1/20
+156/156 [==============================] - 129s 828ms/step - loss: 2.8914 - accuracy: 0.0940 - val_loss: 2.3026 - val_accuracy: 0.1000
+Epoch 2/20
+156/156 [==============================] - 129s 826ms/step - loss: 2.3029 - accuracy: 0.0968 - val_loss: 2.3027 - val_accuracy: 0.0875
+Epoch 3/20
+156/156 [==============================] - 126s 807ms/step - loss: 2.3029 - accuracy: 0.0884 - val_loss: 2.3027 - val_accuracy: 0.0938
+

@@ -1,0 +1,52 @@
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00007075.JPEG!
+('n02417914', 'ibex', 0.027847707)
+('n02422106', 'hartebeest', 0.02846566)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00009013.JPEG!
+('n03706229', 'magnetic_compass', 8.7400537e-07)
+('n04355338', 'sundial', 9.093576e-07)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00016295.JPEG!
+('n04606251', 'wreck', 0.058112517)
+('n03956157', 'planetarium', 0.061036527)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00007934.JPEG!
+('n02058221', 'albatross', 0.046833366)
+('n02056570', 'king_penguin', 0.0480815)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00035638.JPEG!
+('n02114855', 'coyote', 0.004483402)
+('n02422106', 'hartebeest', 0.004327011)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00010775.JPEG!
+('n04517823', 'vacuum', 0.021371191)
+('n02860847', 'bobsled', 0.021517767)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00003127.JPEG!
+('n03720891', 'maraca', 0.0021821004)
+('n01704323', 'triceratops', 0.0022766646)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00003503.JPEG!
+('n02667093', 'abaya', 0.0017138299)
+('n02860847', 'bobsled', 0.0016315018)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00002645.JPEG!
+('n01742172', 'boa_constrictor', 0.19544902)
+('n01744401', 'rock_python', 0.18819235)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00025619.JPEG!
+('n02797295', 'barrow', 0.03479627)
+('n03000684', 'chain_saw', 0.033739932)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00041120.JPEG!
+('n02134418', 'sloth_bear', 0.0126690045)
+('n02346627', 'porcupine', 0.013138293)
+Warning! not match for /root/mobilenet-eval/dataset/imagenet-val/ILSVRC2012_val_00047731.JPEG!
+('n03649909', 'lawn_mower', 0.013224152)
+('n03594945', 'jeep', 0.013652355)
+rate1:0.990280, rate5:0.804800
+
+real    179m39.181s
+user    373m15.052s
+sys     34m39.932s
+
+# results from multithreading
+34180 44125 34203 44132 50000
+orig model top 1:0.683600
+obf model top 1:0.684060
+orig model top 5:0.882500
+obf model top 5:0.882640
+
+real    145m46.496s
+user    442m43.372s
+sys     65m1.540s

@@ -1,0 +1,26 @@
+From 7342990b103d1e8c903524aea90bdcfeacf2b4ce Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Wed, 29 Jul 2020 22:15:29 +0000
+Subject: [PATCH 8/9] add useful cmds
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ useful_cmds.sh | 6 ++++++
+ 1 file changed, 6 insertions(+)
+ create mode 100644 useful_cmds.sh
+
+diff --git a/useful_cmds.sh b/useful_cmds.sh
+new file mode 100644
+index 0000000..299fd3e
+--- /dev/null
++++ b/useful_cmds.sh
+@@ -0,0 +1,6 @@
++bazel build --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" build_pip_pkg
++bazel-bin/build_pip_pkg artifacts
++#bazel test //tensorflow_add_mask:add_mask_ops_py_test
++#bazel test //tensorflow_linear_transform:linear_transform_ops_py_test
++#bazel test //tensorflow_shuffle_channel:shuffle_channel_ops_py_test
++#bazel test //tensorflow_tee_shadow:tee_shadow_ops_py_test
+-- 
+2.7.4
+

@@ -1,0 +1,415 @@
+From 1f36f9b68d0fd6c7b049e16d881123ccfe7cbb0d Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Wed, 29 Jul 2020 22:14:51 +0000
+Subject: [PATCH 7/9] add tee_shadow_generic op
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ tensorflow_tee_shadow_generic/.gitignore           |  1 +
+ tensorflow_tee_shadow_generic/BUILD                | 67 +++++++++++++++
+ tensorflow_tee_shadow_generic/__init__.py          | 19 +++++
+ .../cc/kernels/tee_shadow_generic_kernels.cc       | 95 ++++++++++++++++++++++
+ .../cc/ops/tee_shadow_generic_ops.cc               | 74 +++++++++++++++++
+ tensorflow_tee_shadow_generic/python/__init__.py   |  1 +
+ .../python/ops/__init__.py                         |  1 +
+ .../python/ops/tee_shadow_generic_ops.py           | 26 ++++++
+ .../python/ops/tee_shadow_generic_ops_test.py      | 47 +++++++++++
+ 9 files changed, 331 insertions(+)
+ create mode 100644 tensorflow_tee_shadow_generic/.gitignore
+ create mode 100644 tensorflow_tee_shadow_generic/BUILD
+ create mode 100644 tensorflow_tee_shadow_generic/__init__.py
+ create mode 100644 tensorflow_tee_shadow_generic/cc/kernels/tee_shadow_generic_kernels.cc
+ create mode 100644 tensorflow_tee_shadow_generic/cc/ops/tee_shadow_generic_ops.cc
+ create mode 100644 tensorflow_tee_shadow_generic/python/__init__.py
+ create mode 100644 tensorflow_tee_shadow_generic/python/ops/__init__.py
+ create mode 100644 tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops.py
+ create mode 100644 tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops_test.py
+
+diff --git a/tensorflow_tee_shadow_generic/.gitignore b/tensorflow_tee_shadow_generic/.gitignore
+new file mode 100644
+index 0000000..c18dd8d
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/.gitignore
+@@ -0,0 +1 @@
++__pycache__/
+diff --git a/tensorflow_tee_shadow_generic/BUILD b/tensorflow_tee_shadow_generic/BUILD
+new file mode 100644
+index 0000000..48ea3dc
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/BUILD
+@@ -0,0 +1,67 @@
++licenses(["notice"])  # Apache 2.0
++
++package(default_visibility = ["//visibility:public"])
++
++config_setting(
++    name = "windows",
++    constraint_values = ["@bazel_tools//platforms:windows"],
++)
++
++cc_binary(
++    name = 'python/ops/_tee_shadow_generic_ops.so',
++    srcs = [
++        "cc/kernels/tee_shadow_generic_kernels.cc",
++        "cc/ops/tee_shadow_generic_ops.cc",
++    ],
++    linkshared = 1,
++    deps = [
++        "@local_config_tf//:libtensorflow_framework",
++        "@local_config_tf//:tf_header_lib",
++        "@darknet//:libdarknet",
++        "//third_party/darknet:tee_shadow_net",
++    ],
++    features = select({
++        ":windows": ["windows_export_all_symbols"],
++        "//conditions:default": [],
++    }),
++    copts = select({
++        ":windows": ["/DEIGEN_STRONG_INLINE=inline", "-DTENSORFLOW_MONOLITHIC_BUILD", "/DPLATFORM_WINDOWS", "/DEIGEN_HAS_C99_MATH", "/DTENSORFLOW_USE_EIGEN_THREADPOOL", "/DEIGEN_AVOID_STL_ARRAY", "/Iexternal/gemmlowp", "/wd4018", "/wd4577", "/DNOGDI", "/UTF_COMPILE_LIBRARY"],
++        "//conditions:default": ["-pthread", "-std=c++11", "-D_GLIBCXX_USE_CXX11_ABI=0"],
++    }),
++)
++
++py_library(
++    name = "tee_shadow_generic_ops_py",
++    srcs = ([
++        "python/ops/tee_shadow_generic_ops.py",
++    ]),
++    data = [
++        ":python/ops/_tee_shadow_generic_ops.so"
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_test(
++    name = "tee_shadow_generic_ops_py_test",
++    srcs = [
++        "python/ops/tee_shadow_generic_ops_test.py"
++    ],
++    main = "python/ops/tee_shadow_generic_ops_test.py",
++    deps = [
++        ":tee_shadow_generic_ops_py",
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_library(
++    name = "tee_shadow_generic_py",
++    srcs = ([
++        "__init__.py",
++        "python/__init__.py",
++        "python/ops/__init__.py",
++    ]),
++    deps = [
++        ":tee_shadow_generic_ops_py"
++    ],
++    srcs_version = "PY2AND3",
++)
+diff --git a/tensorflow_tee_shadow_generic/__init__.py b/tensorflow_tee_shadow_generic/__init__.py
+new file mode 100644
+index 0000000..255dfa9
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/__init__.py
+@@ -0,0 +1,19 @@
++# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ==============================================================================
++"""TensorFlow custom op example."""
++
++from __future__ import absolute_import
++
++from tensorflow_tee_shadow_generic.python.ops.tee_shadow_generic_ops import tee_shadow_generic 
+diff --git a/tensorflow_tee_shadow_generic/cc/kernels/tee_shadow_generic_kernels.cc b/tensorflow_tee_shadow_generic/cc/kernels/tee_shadow_generic_kernels.cc
+new file mode 100644
+index 0000000..10b165f
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/cc/kernels/tee_shadow_generic_kernels.cc
+@@ -0,0 +1,95 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op_kernel.h"
++#include "tensorflow/core/framework/register_types.h"
++#include "tensorflow/core/framework/tensor_shape.h"
++#include "third_party/darknet/tee_shadow_net.h"
++
++using namespace tensorflow;
++
++template <typename T>
++class TeeShadowGenericOp : public OpKernel {
++ public:
++  explicit TeeShadowGenericOp(OpKernelConstruction* context) : OpKernel(context) {
++      OP_REQUIRES_OK(context,
++              context->GetAttr("h", &h_));
++      OP_REQUIRES_OK(context,
++              context->GetAttr("w", &w_));
++      OP_REQUIRES_OK(context,
++              context->GetAttr("c", &c_));
++      OP_REQUIRES_OK(context,
++              context->GetAttr("pos", &position_));
++      OP_REQUIRES(context, h_ >= 0,
++              errors::InvalidArgument("height out of range"));
++      OP_REQUIRES(context, w_ >= 0,
++              errors::InvalidArgument("width out of range"));
++      OP_REQUIRES(context, c_ >= 0,
++              errors::InvalidArgument("channel out of range"));
++      // TODO add further checks make sure position_ is in a list ("conv1", ..., "results")
++  }
++
++  void Compute(OpKernelContext* context) override {
++    // Grab the input tensor
++    const Tensor& input_tensor = context->input(0);
++    const TensorShape& input_shape = input_tensor.shape();
++
++    // check input is "NHWC" 
++    DCHECK_EQ(input_shape.dims(),4);
++
++    // create output shape
++    TensorShape output_shape;
++
++    // TODO: Assume the last layer is always named "results"
++    if(position_.compare("results") == 0) { // results shape(batch, channels)
++      output_shape.AddDim(input_shape.dim_size(0));
++      output_shape.AddDim(c_);
++    } else {
++      // TODO Assume NHWC
++      output_shape.AddDim(input_shape.dim_size(0));
++      output_shape.AddDim(h_);
++      output_shape.AddDim(w_);
++      output_shape.AddDim(c_);
++    }
++    
++    // Create an output tensor
++    Tensor* output_tensor = NULL;
++    OP_REQUIRES_OK(context, context->allocate_output(0, output_shape,
++                                                     &output_tensor));
++
++    // get the corresponding Eigen tensors for data access
++    const void *input_flat = input_tensor.flat<T>().data();
++    void *output_flat = output_tensor->flat<T>().data();
++
++    const char *shadow_pos = position_.c_str();
++    darknet_predict(shadow_pos, input_flat, output_flat);
++    return;
++  }
++
++ private:
++  int h_;
++  int w_;
++  int c_;
++  string position_;
++};
++
++#define REGISTER_KERNEL(type)                                       \
++  REGISTER_KERNEL_BUILDER(                                          \
++      Name("TeeShadowGeneric").Device(DEVICE_CPU).TypeConstraint<type>("T"), \
++      TeeShadowGenericOp<type>)
++
++//TF_CALL_REAL_NUMBER_TYPES(REGISTER_KERNEL);
++REGISTER_KERNEL(float);
++#undef REGISTER_KERNEL
+diff --git a/tensorflow_tee_shadow_generic/cc/ops/tee_shadow_generic_ops.cc b/tensorflow_tee_shadow_generic/cc/ops/tee_shadow_generic_ops.cc
+new file mode 100644
+index 0000000..40bf9bd
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/cc/ops/tee_shadow_generic_ops.cc
+@@ -0,0 +1,74 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op.h"
++#include "tensorflow/core/framework/register_types.h"
++#include "tensorflow/core/framework/shape_inference.h"
++
++using namespace tensorflow;
++
++REGISTER_OP("TeeShadowGeneric")
++    .Attr("T: realnumbertype")
++    .Attr("h: int = 0")
++    .Attr("w: int = 0")
++    .Attr("c: int = 0")
++    .Attr("pos: string = 'conv1'")
++    .Input("input: T")
++    .Output("output: T")
++    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
++      shape_inference::ShapeHandle input_shape;
++      shape_inference::ShapeHandle output_shape;
++      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 4, &input_shape));
++
++	  // assuming data format NHWC
++      int h, w, chn;
++	  int channel_dim_index = 3;
++      string shadow_position;
++      std::vector<::tensorflow::shape_inference::DimensionHandle> output_dims;
++
++      TF_RETURN_IF_ERROR(c->GetAttr("h", &h));
++      TF_RETURN_IF_ERROR(c->GetAttr("w", &w));
++      TF_RETURN_IF_ERROR(c->GetAttr("c", &chn));
++      TF_RETURN_IF_ERROR(c->GetAttr("pos", &shadow_position));
++
++      // create dim
++      shape_inference::DimensionHandle h_handle = c->MakeDim(h);
++      shape_inference::DimensionHandle w_handle = c->MakeDim(w);
++      shape_inference::DimensionHandle chn_handle = c->MakeDim(chn);
++
++      // TODO: Assume the last layer is always named "results"
++      // We can also use h=w=0 as indicator for the last tee_shadow layer.
++      if(shadow_position.compare("results") == 0) { // results shape(batch, channels)
++        output_dims.emplace_back(c->Dim(input_shape, 0));
++        output_dims.emplace_back(chn_handle);
++        c->set_output(0, c->MakeShape(output_dims));
++      } else { 
++        TF_RETURN_IF_ERROR(c->ReplaceDim(input_shape, channel_dim_index, chn_handle, &output_shape));
++        TF_RETURN_IF_ERROR(c->ReplaceDim(output_shape, 1, h_handle, &output_shape));
++        TF_RETURN_IF_ERROR(c->ReplaceDim(output_shape, 2, w_handle, &output_shape));
++        c->set_output(0, output_shape);
++      }
++
++      return Status::OK();
++    })
++    .Doc(R"doc(
++Forward following non-linear or secret layers to tee ShadowNet for computation.
++
++Attribute "pos" refer to the position of this operation, it affect which tee shadow model to load. When "pos" is "results", it means the following layer do the prediction. 
++
++Attribute "h","w","c" refer to the height, width and  channel numbers after computation respectively.  
++
++If following shadow layers contains LinearTransform Op, then the output channel changes, otherwise the input shape should be the same as output shape. 
++)doc");
+diff --git a/tensorflow_tee_shadow_generic/python/__init__.py b/tensorflow_tee_shadow_generic/python/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/python/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_tee_shadow_generic/python/ops/__init__.py b/tensorflow_tee_shadow_generic/python/ops/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/python/ops/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops.py b/tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops.py
+new file mode 100644
+index 0000000..0e30bdd
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops.py
+@@ -0,0 +1,26 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Use tee_shadow_generic ops in python."""
++
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++from tensorflow.python.framework import load_library
++from tensorflow.python.platform import resource_loader
++
++tee_shadow_generic_ops = load_library.load_op_library(
++    resource_loader.get_path_to_datafile('_tee_shadow_generic_ops.so'))
++tee_shadow_generic = tee_shadow_generic_ops.tee_shadow_generic
+diff --git a/tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops_test.py b/tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops_test.py
+new file mode 100644
+index 0000000..cbb9d84
+--- /dev/null
++++ b/tensorflow_tee_shadow_generic/python/ops/tee_shadow_generic_ops_test.py
+@@ -0,0 +1,47 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Tests for tee_shadow_generic ops."""
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++import numpy as np
++
++from tensorflow.python.platform import test
++try:
++  from tensorflow_tee_shadow_generic.python.ops.tee_shadow_generic_ops import tee_shadow_generic
++except ImportError:
++  from tee_shadow_generic_ops import tee_shadow_generic
++
++
++class TeeShadowGenericTest(test.TestCase):
++
++  def testTeeShadowGeneric(self):
++    with self.test_session():
++      self.assertAllClose(
++          tee_shadow_generic(pos="conv1", h=2,w=2,c=2, input=
++              [[[[1.0, 2.0, 3.0], 
++                 [3.0, 4.0, 5.0]], 
++                [[4.0, 3.0, 2.0],
++                 [2.0, 1.0, 1.0]]]]),
++                np.array(
++                [[[[3.2, 3.1], 
++                 [5.4, 5.3]], 
++                [[2.3, 2.4],
++                 [1.1, 1.2]]]]))
++
++
++if __name__ == '__main__':
++  test.main()
+-- 
+2.7.4
+

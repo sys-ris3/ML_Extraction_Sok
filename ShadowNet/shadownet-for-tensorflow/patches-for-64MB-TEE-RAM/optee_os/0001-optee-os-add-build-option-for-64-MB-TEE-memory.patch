@@ -1,0 +1,97 @@
+From f956c2921d6c894e249d1f95b7ff29a9c60b8cd9 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+Date: Wed, 28 Apr 2021 14:20:46 -0400
+Subject: [PATCH] optee-os add build option for 64 MB TEE memory
+
+Signed-off-by: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+---
+ core/arch/arm/include/mm/pgt_cache.h       |  4 ++++
+ core/arch/arm/plat-hikey/conf.mk           | 21 +++++++++++++++++++++
+ core/arch/arm/plat-hikey/platform_config.h |  5 +++++
+ 3 files changed, 30 insertions(+)
+
+diff --git a/core/arch/arm/include/mm/pgt_cache.h b/core/arch/arm/include/mm/pgt_cache.h
+index 99b9058..cc984f0 100644
+--- a/core/arch/arm/include/mm/pgt_cache.h
++++ b/core/arch/arm/include/mm/pgt_cache.h
+@@ -37,11 +37,15 @@ struct pgt {
+ /*
+  * Reserve 2 page tables per thread, but at least 4 page tables in total
+  */
++#ifdef CFG_WITH_PAGER
+ #if CFG_NUM_THREADS < 2
+ #define PGT_CACHE_SIZE	4
+ #else
+ #define PGT_CACHE_SIZE	ROUNDUP(CFG_NUM_THREADS * 2, PGT_NUM_PGT_PER_PAGE)
+ #endif
++#else
++#define PGT_CACHE_SIZE  32
++#endif /*CFG_WITH_PAGER*/
+ 
+ SLIST_HEAD(pgt_cache, pgt);
+ 
+diff --git a/core/arch/arm/plat-hikey/conf.mk b/core/arch/arm/plat-hikey/conf.mk
+index 2ad0525..393ebc3 100644
+--- a/core/arch/arm/plat-hikey/conf.mk
++++ b/core/arch/arm/plat-hikey/conf.mk
+@@ -38,7 +38,14 @@ endif
+ 
+ CFG_CACHE_API ?= y
+ CFG_SECURE_DATA_PATH ?= y
++
++CFG_TZRAM_SIZE ?= 64
++
++ifeq ($(CFG_TZRAM_SIZE),64)
++CFG_TEE_SDP_MEM_BASE ?= 0x3B800000
++else
+ CFG_TEE_SDP_MEM_BASE ?= 0x3E800000
++endif
+ CFG_TEE_SDP_MEM_SIZE ?= 0x00400000
+ 
+ ifeq ($(PLATFORM_FLAVOR),hikey)
+@@ -59,10 +66,24 @@ $(call force,CFG_CORE_ARM64_PA_BITS,36)
+ endif
+ endif
+ 
++ifeq ($(CFG_TZRAM_SIZE),64)
++ifeq ($(CFG_WITH_PAGER),y)
++$(error "CFG_WITH_PAGER is not compatible with CFG_TZRAM_SIZE=64")
++endif
++core-platform-cppflags     += -DHIKEY960_TZRAM_64MB
++endif
++
++ifeq ($(CFG_TZRAM_SIZE),64)
++CFG_TZDRAM_START ?= 0x3C000000
++CFG_TZDRAM_SIZE ?= 0x04000000
++CFG_SHMEM_START ?= 0x3BE00000
++CFG_SHMEM_SIZE ?= 0x00200000
++else
+ CFG_TZDRAM_START ?= 0x3F000000
+ CFG_TZDRAM_SIZE ?= 0x01000000
+ CFG_SHMEM_START ?= 0x3EE00000
+ CFG_SHMEM_SIZE ?= 0x00200000
++endif
+ CFG_TEE_RAM_VA_SIZE ?= 0x00200000
+ 
+ CFG_IN_TREE_EARLY_TAS += avb/023f8f1a-292a-432b-8fc4-de8471358067
+diff --git a/core/arch/arm/plat-hikey/platform_config.h b/core/arch/arm/plat-hikey/platform_config.h
+index 35e6f3d..4c9d4f8 100644
+--- a/core/arch/arm/plat-hikey/platform_config.h
++++ b/core/arch/arm/plat-hikey/platform_config.h
+@@ -105,8 +105,13 @@
+  */
+ 
+ #define DRAM0_BASE		0x00000000
++#ifdef HIKEY960_TZRAM_64MB
++#define DRAM0_SIZE		0x3C000000
++#define DRAM0_SIZE_NSEC		0x3B000000
++#else
+ #define DRAM0_SIZE		0x3F000000
+ #define DRAM0_SIZE_NSEC		0x3E000000
++#endif
+ #define DRAM1_BASE		0x40000000
+ 
+ #if defined(PLATFORM_FLAVOR_hikey)
+-- 
+2.7.4
+

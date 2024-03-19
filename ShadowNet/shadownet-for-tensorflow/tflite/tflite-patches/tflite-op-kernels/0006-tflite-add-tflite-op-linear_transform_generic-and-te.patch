@@ -1,0 +1,478 @@
+From 8f43eaad873269f7ccfd715b43d60c526ff71827 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Fri, 14 Aug 2020 02:50:56 +0000
+Subject: [PATCH 06/12] tflite: add tflite op linear_transform_generic and
+ tee_shadow_generic
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ WORKSPACE                                          |  24 ++++
+ tensorflow/lite/kernels/BUILD                      |   4 +-
+ tensorflow/lite/kernels/linear_transform.cc        |  11 +-
+ .../lite/kernels/linear_transform_generic.cc       | 142 +++++++++++++++++++++
+ tensorflow/lite/kernels/register.cc                |   4 +
+ tensorflow/lite/kernels/register_ref.cc            |   4 +
+ tensorflow/lite/kernels/tee_shadow.cc              |   4 +-
+ tensorflow/lite/kernels/tee_shadow_generic.cc      | 123 ++++++++++++++++++
+ 8 files changed, 308 insertions(+), 8 deletions(-)
+ create mode 100644 tensorflow/lite/kernels/linear_transform_generic.cc
+ create mode 100644 tensorflow/lite/kernels/tee_shadow_generic.cc
+
+diff --git a/WORKSPACE b/WORKSPACE
+index e65b140..fa0b205f 100644
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -131,6 +131,30 @@ new_git_repository(
+     remote = "/root/darknet",
+ )
+ 
++new_local_repository(
++    name = "shadownet",
++    path = "/root/tensorflow/third_party/optee_delegate/shadownet_ca/",
++    build_file = "//third_party/optee_delegate:shadownet_ca.BUILD"
++)
++
++new_local_repository(
++    name = "alexnet",
++    path = "/root/tensorflow/third_party/optee_delegate/alexnet_ca/",
++    build_file = "//third_party/optee_delegate:alexnet_ca.BUILD"
++)
++
++new_local_repository(
++    name = "minivgg",
++    path = "/root/tensorflow/third_party/optee_delegate/minivgg_ca/",
++    build_file = "//third_party/optee_delegate:minivgg_ca.BUILD"
++)
++
++new_local_repository(
++    name = "darknetes",
++    path = "/root/tensorflow/third_party/optee_delegate/darknet_ca/",
++    build_file = "//third_party/optee_delegate:darknet_ca.BUILD"
++)
++
+ # Required for dependency @com_github_grpc_grpc
+ 
+ load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+diff --git a/tensorflow/lite/kernels/BUILD b/tensorflow/lite/kernels/BUILD
+index 7ff2159..43d965d 100644
+--- a/tensorflow/lite/kernels/BUILD
++++ b/tensorflow/lite/kernels/BUILD
+@@ -34,7 +34,7 @@ cc_library(
+     name = "tflite_with_tee_enabled",
+     defines = ["TFLITE_TEE_DELEGATE"],
+     visibility = ["//visibility:private"],
+-    deps = ["//third_party/optee_delegate:tee_delegate"],
++    deps = ["//third_party/optee_delegate:tee_shadow_net"],
+ )
+ 
+ cc_library(
+@@ -492,6 +492,7 @@ cc_library(
+         "if.cc",
+         "l2norm.cc",
+         "linear_transform.cc",
++        "linear_transform_generic.cc",
+         "local_response_norm.cc",
+         "logical.cc",
+         "lsh_projection.cc",
+@@ -538,6 +539,7 @@ cc_library(
+         "sub.cc",
+         "svdf.cc",
+         "tee_shadow.cc",
++        "tee_shadow_generic.cc",
+         "tile.cc",
+         "topk_v2.cc",
+         "transpose.cc",
+diff --git a/tensorflow/lite/kernels/linear_transform.cc b/tensorflow/lite/kernels/linear_transform.cc
+index d87cbf7..c5181e0 100644
+--- a/tensorflow/lite/kernels/linear_transform.cc
++++ b/tensorflow/lite/kernels/linear_transform.cc
+@@ -22,9 +22,9 @@ limitations under the License.
+ 
+ //#define TFLITE_TEE_DELEGATE
+ 
+-#ifdef TFLITE_TEE_DELEGATE
+-#include "third_party/optee_delegate/tee_delegate.h"
+-#endif // TFLITE_TEE_DELEGATE
++//#ifdef TFLITE_TEE_DELEGATE
++//#include "third_party/optee_delegate/tee_delegate.h"
++//#endif // TFLITE_TEE_DELEGATE
+ 
+ namespace tflite {
+ namespace ops {
+@@ -84,7 +84,7 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+   size_t M = input_x->dims->data[3];
+   size_t N = input_w->dims->data[1];
+ 
+-#ifdef TFLITE_TEE_DELEGATE
++#if 0 
+   uint32_t teec_res;
+   teeDelegateStatus status;
+   char *STATUS_CODE[] = {"Ok","Noinit","Fail"};
+@@ -93,10 +93,10 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+ 
+   TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "ZCLOG: tee_linear_transform status:%s, TEEC_Result:%x", STATUS_CODE[status], teec_res);
+ 
+-#else
+ 
+   DUMPW8("linear_transform w_flat", (N*2),  w_flat);
+   DUMPW8("linear_transform r_flat", N,  r_flat);
++#endif
+ 
+   int idx_from, idx_rand;
+   float scalar; 
+@@ -116,6 +116,7 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+     }
+   }
+ 
++#if 0
+     DUMPW8("linear_transform output bytes:",H*W*N, output_flat);
+     DUMPW4F("linear_transform output float:",H*W*N, output_flat);
+ #endif // TFLITE_TEE_DELEGATE
+diff --git a/tensorflow/lite/kernels/linear_transform_generic.cc b/tensorflow/lite/kernels/linear_transform_generic.cc
+new file mode 100644
+index 0000000..8619ec7
+--- /dev/null
++++ b/tensorflow/lite/kernels/linear_transform_generic.cc
+@@ -0,0 +1,142 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "tensorflow/lite/kernels/internal/optimized/optimized_ops.h"
++#include "tensorflow/lite/kernels/internal/reference/reference_ops.h"
++#include "tensorflow/lite/kernels/internal/tensor.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/op_macros.h"
++#include "tensorflow/lite/minimal_logging.h"
++#include "tensorflow/lite/kernels/custom_op_debug.h"
++
++//#define TFLITE_TEE_DELEGATE
++
++//#ifdef TFLITE_TEE_DELEGATE
++//#include "third_party/optee_delegate/tee_delegate.h"
++//#endif // TFLITE_TEE_DELEGATE
++
++namespace tflite {
++namespace ops {
++namespace custom {
++namespace linear_transform_generic {
++
++enum KernelType {
++  kReference,
++};
++
++constexpr int kInputTensorX = 0;
++constexpr int kInputTensorW = 1;
++constexpr int kInputTensorR = 2;
++constexpr int kInputTensorB = 3;
++constexpr int kOutputTensor = 0;
++
++TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
++  TF_LITE_ENSURE_EQ(context, NumInputs(node), 4);
++  TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
++
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  const TfLiteTensor* input_b = GetInput(context, node, kInputTensorB);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_x), 4);
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_w), 2);
++
++  TF_LITE_ENSURE_EQ(context, output->type, kTfLiteFloat32);
++  TF_LITE_ENSURE_EQ(context, input_x->type, output->type);
++  TF_LITE_ENSURE_EQ(context, input_w->type, kTfLiteInt32);
++  TF_LITE_ENSURE_EQ(context, input_r->type, output->type);
++  TF_LITE_ENSURE_EQ(context, input_b->type, output->type);
++
++  TfLiteIntArray* output_size = TfLiteIntArrayCreate(4);
++  output_size->data[0] = input_x->dims->data[0];
++  output_size->data[1] = input_x->dims->data[1];
++  output_size->data[2] = input_x->dims->data[2];
++  output_size->data[3] = input_w->dims->data[1];
++
++  return context->ResizeTensor(context, output, output_size);
++}
++
++template <KernelType kernel_type>
++TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  const TfLiteTensor* input_b = GetInput(context, node, kInputTensorB);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  const float* x_flat = GetTensorData<float>(input_x);
++  const int* w_flat = GetTensorData<int>(input_w);
++  const float* r_flat = GetTensorData<float>(input_r);
++  const float* b_flat = GetTensorData<float>(input_b);
++  float* output_flat = GetTensorData<float>(output);
++
++  size_t B = input_x->dims->data[0];
++  size_t H = input_x->dims->data[1];
++  size_t W = input_x->dims->data[2];
++  size_t M = input_x->dims->data[3];
++  size_t N = input_w->dims->data[1];
++
++#if 0 
++  uint32_t teec_res;
++  teeDelegateStatus status;
++  char *STATUS_CODE[] = {"Ok","Noinit","Fail"};
++
++  status = tee_linear_transform_generic(&teec_res, B, H, W, M, N, x_flat, w_flat, r_flat, output_flat);
++
++  TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "ZCLOG: tee_linear_transform_generic status:%s, TEEC_Result:%x", STATUS_CODE[status], teec_res);
++
++
++  DUMPW8("linear_transform_generic w_flat", (N*2),  w_flat);
++  DUMPW8("linear_transform_generic r_flat", N,  r_flat);
++#endif
++
++  int idx_from, idx_rand;
++  float scalar; 
++  for (size_t b = 0; b < B; ++b) {
++    for (size_t h = 0; h < H; ++h) {
++      for (size_t w = 0; w < W; ++w) {
++        for (size_t n = 0; n < N; ++n) {
++          idx_from = w_flat[n];
++          idx_rand = w_flat[N + n];
++          scalar = r_flat[n];
++
++          output_flat[(b * H * W * N) + (h * W * N) + (w * N) + n] = 
++            x_flat[(b * H * W * M) + (h * W * M) + (w * M) + idx_from] * scalar +  
++              x_flat[(b * H * W * M) + (h * W * M) + (w * M) + idx_rand] + b_flat[n]; 
++        }
++      }
++    }
++  }
++
++#if 0
++    DUMPW8("linear_transform_generic output bytes:",H*W*N, output_flat);
++    DUMPW4F("linear_transform_generic output float:",H*W*N, output_flat);
++#endif // TFLITE_TEE_DELEGATE
++
++  return kTfLiteOk;
++}
++ 
++}  // namespace linear_transform_generic 
++
++TfLiteRegistration* Register_LINEAR_TRANSFORM_GENERIC() {
++  static TfLiteRegistration r = {nullptr, nullptr, linear_transform_generic::Prepare,
++                                 linear_transform_generic::Eval<linear_transform_generic::kReference>};
++  return &r;
++}
++
++}  // namespace custom
++}  // namespace ops
++}  // namespace tflite
+diff --git a/tensorflow/lite/kernels/register.cc b/tensorflow/lite/kernels/register.cc
+index c3f71f5..c25aa1e 100644
+--- a/tensorflow/lite/kernels/register.cc
++++ b/tensorflow/lite/kernels/register.cc
+@@ -27,8 +27,10 @@ TfLiteRegistration* Register_MFCC();
+ TfLiteRegistration* Register_DETECTION_POSTPROCESS();
+ TfLiteRegistration* Register_ADD_MASK();
+ TfLiteRegistration* Register_LINEAR_TRANSFORM();
++TfLiteRegistration* Register_LINEAR_TRANSFORM_GENERIC();
+ TfLiteRegistration* Register_SHUFFLE_CHANNEL();
+ TfLiteRegistration* Register_TEE_SHADOW();
++TfLiteRegistration* Register_TEE_SHADOW_GENERIC();
+ 
+ }  // namespace custom
+ 
+@@ -298,8 +300,10 @@ BuiltinOpResolver::BuiltinOpResolver() {
+             tflite::ops::custom::Register_DETECTION_POSTPROCESS());
+   AddCustom("AddMask", tflite::ops::custom::Register_ADD_MASK());
+   AddCustom("LinearTransform", tflite::ops::custom::Register_LINEAR_TRANSFORM());
++  AddCustom("LinearTransformGeneric", tflite::ops::custom::Register_LINEAR_TRANSFORM_GENERIC());
+   AddCustom("ShuffleChannel", tflite::ops::custom::Register_SHUFFLE_CHANNEL());
+   AddCustom("TeeShadow", tflite::ops::custom::Register_TEE_SHADOW());
++  AddCustom("TeeShadowGeneric", tflite::ops::custom::Register_TEE_SHADOW_GENERIC());
+ }
+ 
+ }  // namespace builtin
+diff --git a/tensorflow/lite/kernels/register_ref.cc b/tensorflow/lite/kernels/register_ref.cc
+index c5089b1..6d2e6ec 100644
+--- a/tensorflow/lite/kernels/register_ref.cc
++++ b/tensorflow/lite/kernels/register_ref.cc
+@@ -26,8 +26,10 @@ TfLiteRegistration* Register_MFCC();
+ TfLiteRegistration* Register_DETECTION_POSTPROCESS();
+ TfLiteRegistration* Register_ADD_MASK();
+ TfLiteRegistration* Register_LINEAR_TRANSFORM();
++TfLiteRegistration* Register_LINEAR_TRANSFORM_GENERIC();
+ TfLiteRegistration* Register_SHUFFLE_CHANNEL();
+ TfLiteRegistration* Register_TEE_SHADOW();
++TfLiteRegistration* Register_TEE_SHADOW_GENERIC();
+ 
+ }  // namespace custom
+ 
+@@ -302,8 +304,10 @@ BuiltinRefOpResolver::BuiltinRefOpResolver() {
+             tflite::ops::custom::Register_DETECTION_POSTPROCESS());
+   AddCustom("AddMask", tflite::ops::custom::Register_ADD_MASK());
+   AddCustom("LinearTransform", tflite::ops::custom::Register_LINEAR_TRANSFORM());
++  AddCustom("LinearTransformGeneric", tflite::ops::custom::Register_LINEAR_TRANSFORM_GENERIC());
+   AddCustom("ShuffleChannel", tflite::ops::custom::Register_SHUFFLE_CHANNEL());
+   AddCustom("TeeShadow", tflite::ops::custom::Register_TEE_SHADOW());
++  AddCustom("TeeShadowGeneric", tflite::ops::custom::Register_TEE_SHADOW_GENERIC());
+ }
+ 
+ }  // namespace builtin
+diff --git a/tensorflow/lite/kernels/tee_shadow.cc b/tensorflow/lite/kernels/tee_shadow.cc
+index 381e82f..953d30d 100644
+--- a/tensorflow/lite/kernels/tee_shadow.cc
++++ b/tensorflow/lite/kernels/tee_shadow.cc
+@@ -23,9 +23,9 @@ limitations under the License.
+ #include "tensorflow/lite/minimal_logging.h"
+ #include "tensorflow/lite/kernels/custom_op_debug.h"
+ 
+-#ifdef TFLITE_TEE_EMULATED
++#ifdef TFLITE_TEE_DELEGATE
+ #include "third_party/optee_delegate/tee_shadow_net.h"
+-#endif // TFLITE_TEE_EMULATED
++#endif // TFLITE_TEE_DELEGATE
+ 
+ namespace tflite {
+ namespace ops {
+diff --git a/tensorflow/lite/kernels/tee_shadow_generic.cc b/tensorflow/lite/kernels/tee_shadow_generic.cc
+new file mode 100644
+index 0000000..f74c511
+--- /dev/null
++++ b/tensorflow/lite/kernels/tee_shadow_generic.cc
+@@ -0,0 +1,123 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "flatbuffers/flexbuffers.h"  // TF:flatbuffers
++#include "tensorflow/lite/c/builtin_op_data.h"
++#include "tensorflow/lite/c/common.h"
++#include "tensorflow/lite/kernels/internal/optimized/optimized_ops.h"
++#include "tensorflow/lite/kernels/internal/reference/reference_ops.h"
++#include "tensorflow/lite/kernels/internal/tensor.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/op_macros.h"
++#include "tensorflow/lite/minimal_logging.h"
++#include "tensorflow/lite/kernels/custom_op_debug.h"
++
++#ifdef TFLITE_TEE_DELEGATE
++#include "third_party/optee_delegate/tee_shadow_net.h"
++#endif // TFLITE_TEE_DELEGATE
++
++namespace tflite {
++namespace ops {
++namespace custom {
++namespace tee_shadow_generic {
++
++enum KernelType {
++  kReference,
++};
++
++typedef struct{
++    int h;
++    int w;
++    int c;
++    string pos;
++}TfLiteTeeShadowGenericParams;
++
++constexpr int kInputTensorX = 0;
++constexpr int kOutputTensor = 0;
++
++void *Init(TfLiteContext* context, const char* buffer, size_t length) {
++    auto *data = new TfLiteTeeShadowGenericParams;
++    
++    const uint8_t* buffer_t = reinterpret_cast<const uint8_t*>(buffer);
++
++    const flexbuffers::Map& m = flexbuffers::GetRoot(buffer_t, length).AsMap();
++    data->h= m["h"].AsInt32();
++    data->w= m["w"].AsInt32();
++    data->c= m["c"].AsInt32();
++    data->pos = m["pos"].AsString().c_str();
++    //printf("TeeShadowGeneric params units:%d\n",data->units);
++    //printf("TeeShadowGeneric params pos:%s\n",data->pos.c_str());
++    return data;
++}
++
++void Free(TfLiteContext* context, void* buffer) {
++    delete reinterpret_cast<TfLiteTeeShadowGenericParams*>(buffer);
++}
++
++TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
++  auto* params = reinterpret_cast<TfLiteTeeShadowGenericParams*>(node->user_data);
++
++  TF_LITE_ENSURE_EQ(context, NumInputs(node), 1);
++  TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
++
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_x), 4);
++
++  TF_LITE_ENSURE_EQ(context, output->type, kTfLiteFloat32);
++  TF_LITE_ENSURE_EQ(context, input_x->type, output->type);
++
++  TfLiteIntArray* output_size;
++  if(params->pos.compare(0,4, "resu") == 0) {// results shape(batch, channels)
++    output_size = TfLiteIntArrayCreate(2);
++    output_size->data[0] = input_x->dims->data[0];
++    output_size->data[1] = params->c;
++  }else {
++    output_size = TfLiteIntArrayCreate(4);
++    output_size->data[0] = input_x->dims->data[0];
++    output_size->data[1] = params->h;
++    output_size->data[2] = params->w;
++    output_size->data[3] = params->c;
++  }
++
++  return context->ResizeTensor(context, output, output_size);
++}
++
++template <KernelType kernel_type>
++TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
++  auto* params = reinterpret_cast<TfLiteTeeShadowGenericParams*>(node->user_data);
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  const float* x_flat = GetTensorData<float>(input_x);
++  float* output_flat = GetTensorData<float>(output);
++
++  const char *shadow_pos = params->pos.c_str();
++  darknet_predict(shadow_pos, x_flat, output_flat);
++
++  return kTfLiteOk;
++}
++ 
++}  // namespace tee_shadow_generic 
++
++TfLiteRegistration* Register_TEE_SHADOW_GENERIC() {
++  static TfLiteRegistration r = {tee_shadow_generic::Init, tee_shadow_generic::Free, tee_shadow_generic::Prepare,
++                                 tee_shadow_generic::Eval<tee_shadow_generic::kReference>};
++  return &r;
++}
++
++}  // namespace custom
++}  // namespace ops
++}  // namespace tflite
+-- 
+2.7.4
+

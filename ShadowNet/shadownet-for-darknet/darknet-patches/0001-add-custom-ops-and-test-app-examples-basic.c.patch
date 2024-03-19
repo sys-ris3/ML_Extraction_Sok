@@ -1,0 +1,671 @@
+From 1ec27b4d8f4120937b1dcbb1f90a31c83307c755 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Sun, 10 May 2020 07:16:22 +0000
+Subject: [PATCH] add custom ops and test app examples/basic.c
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ Makefile                     |  11 +++--
+ examples/basic.c             |  47 ++++++++++++++++++++
+ include/darknet.h            |  14 +++++-
+ src/activations.c            |   5 +++
+ src/activations.h            |   2 +
+ src/add_mask_layer.c         |  47 ++++++++++++++++++++
+ src/add_mask_layer.h         |  12 +++++
+ src/linear_transform_layer.c |  62 ++++++++++++++++++++++++++
+ src/linear_transform_layer.h |  12 +++++
+ src/network.c                |   9 ++++
+ src/parser.c                 | 102 +++++++++++++++++++++++++++++++++++++++++++
+ src/shuffle_channel_layer.c  |  58 ++++++++++++++++++++++++
+ src/shuffle_channel_layer.h  |  12 +++++
+ 13 files changed, 389 insertions(+), 4 deletions(-)
+ create mode 100644 examples/basic.c
+ create mode 100644 src/add_mask_layer.c
+ create mode 100644 src/add_mask_layer.h
+ create mode 100644 src/linear_transform_layer.c
+ create mode 100644 src/linear_transform_layer.h
+ create mode 100644 src/shuffle_channel_layer.c
+ create mode 100644 src/shuffle_channel_layer.h
+
+diff --git a/Makefile b/Makefile
+index 63e15e6..28dd326 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,7 +2,7 @@ GPU=0
+ CUDNN=0
+ OPENCV=0
+ OPENMP=0
+-DEBUG=0
++DEBUG=1
+ 
+ ARCH= -gencode arch=compute_30,code=sm_30 \
+       -gencode arch=compute_35,code=sm_35 \
+@@ -17,6 +17,7 @@ VPATH=./src/:./examples
+ SLIB=libdarknet.so
+ ALIB=libdarknet.a
+ EXEC=darknet
++BASIC=basic
+ OBJDIR=./obj/
+ 
+ CC=gcc
+@@ -58,7 +59,8 @@ CFLAGS+= -DCUDNN
+ LDFLAGS+= -lcudnn
+ endif
+ 
+-OBJ=gemm.o utils.o cuda.o deconvolutional_layer.o convolutional_layer.o list.o image.o activations.o im2col.o col2im.o blas.o crop_layer.o dropout_layer.o maxpool_layer.o softmax_layer.o data.o matrix.o network.o connected_layer.o cost_layer.o parser.o option_list.o detection_layer.o route_layer.o upsample_layer.o box.o normalization_layer.o avgpool_layer.o layer.o local_layer.o shortcut_layer.o logistic_layer.o activation_layer.o rnn_layer.o gru_layer.o crnn_layer.o demo.o batchnorm_layer.o region_layer.o reorg_layer.o tree.o  lstm_layer.o l2norm_layer.o yolo_layer.o iseg_layer.o image_opencv.o
++OBJ=gemm.o utils.o cuda.o deconvolutional_layer.o convolutional_layer.o list.o image.o activations.o im2col.o col2im.o blas.o crop_layer.o dropout_layer.o maxpool_layer.o softmax_layer.o data.o matrix.o network.o connected_layer.o cost_layer.o parser.o option_list.o detection_layer.o route_layer.o upsample_layer.o box.o normalization_layer.o avgpool_layer.o layer.o local_layer.o shortcut_layer.o logistic_layer.o activation_layer.o rnn_layer.o gru_layer.o crnn_layer.o demo.o batchnorm_layer.o region_layer.o reorg_layer.o tree.o  lstm_layer.o l2norm_layer.o yolo_layer.o iseg_layer.o image_opencv.o add_mask_layer.o linear_transform_layer.o shuffle_channel_layer.o
++BASICOBJA=basic.o
+ EXECOBJA=captcha.o lsd.o super.o art.o tag.o cifar.o go.o rnn.o segmenter.o regressor.o classifier.o coco.o yolo.o detector.o nightmare.o instance-segmenter.o darknet.o
+ ifeq ($(GPU), 1) 
+ LDFLAGS+= -lstdc++ 
+@@ -66,12 +68,15 @@ OBJ+=convolutional_kernels.o deconvolutional_kernels.o activation_kernels.o im2c
+ endif
+ 
+ EXECOBJ = $(addprefix $(OBJDIR), $(EXECOBJA))
++BASICOBJ = $(addprefix $(OBJDIR), $(BASICOBJA))
+ OBJS = $(addprefix $(OBJDIR), $(OBJ))
+ DEPS = $(wildcard src/*.h) Makefile include/darknet.h
+ 
+-all: obj backup results $(SLIB) $(ALIB) $(EXEC)
++all: obj backup results $(SLIB) $(ALIB) $(EXEC) $(BASIC)
+ #all: obj  results $(SLIB) $(ALIB) $(EXEC)
+ 
++$(BASIC): $(BASICOBJ) $(ALIB)
++	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS) $(ALIB)
+ 
+ $(EXEC): $(EXECOBJ) $(ALIB)
+ 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS) $(ALIB)
+diff --git a/examples/basic.c b/examples/basic.c
+new file mode 100644
+index 0000000..36a7d8d
+--- /dev/null
++++ b/examples/basic.c
+@@ -0,0 +1,47 @@
++#include "darknet.h"
++
++#include <sys/time.h>
++
++void model_inference(char *cfgfile, char *weightfile, char *filename)
++{
++    int i;
++    double time;
++    network *net = load_network(cfgfile, weightfile, 0);
++    set_batch_network(net, 1);
++    
++    //image im = load_image_color(filename, 0, 0);
++    //image r = letterbox_image(im, net->w, net->h);
++
++    FILE *fp = fopen(filename, "rb");
++    if(!fp) file_error(filename);
++    int size = net->w * net->h * 3 * sizeof(float);
++    void *data = malloc(net->w * net->h * 3 * sizeof(float));
++    fread(data, 1, size, fp); 
++    printf("data[0], [1]: %f, %f\n", ((float*)data)[0],((float*)data)[1]);
++
++    //float *X = r.data;
++    float *X = (float*)data;
++    time=clock();
++    float *predictions = network_predict(net, X);
++    fprintf(stderr, "%s: Predicted in %f seconds.\n", filename, sec(clock()-time));
++    printf("output:\n");
++    for (i = 0; i < 4; i++) {
++        printf("%.6f\t%.6f\t%.6f\t%.6f\n",predictions[0 + i*4],
++                                     predictions[1 + i*4],
++                                     predictions[2 + i*4],
++                                     predictions[4 + i*4]);
++    }
++}
++
++
++int main(int argc, char **argv)
++{
++    char *cfg = argv[1];
++    char *weights = argv[2];
++    char *filename= argv[3];
++
++    model_inference(cfg, weights, filename);
++
++    return 0;
++}
++
+diff --git a/include/darknet.h b/include/darknet.h
+index 4390c61..c956c04 100644
+--- a/include/darknet.h
++++ b/include/darknet.h
+@@ -46,7 +46,7 @@ typedef struct{
+ tree *read_tree(char *filename);
+ 
+ typedef enum{
+-    LOGISTIC, RELU, RELIE, LINEAR, RAMP, TANH, PLSE, LEAKY, ELU, LOGGY, STAIR, HARDTAN, LHTAN, SELU
++    LOGISTIC, RELU, RELIE, LINEAR, RAMP, TANH, PLSE, LEAKY, ELU, LOGGY, STAIR, HARDTAN, LHTAN, SELU,NOACT
+ } ACTIVATION;
+ 
+ typedef enum{
+@@ -87,6 +87,9 @@ typedef enum {
+     UPSAMPLE,
+     LOGXENT,
+     L2NORM,
++    ADD_MASK,
++    LINEAR_TRANSFORM,
++    SHUFFLE_CHANNEL,
+     BLANK
+ } LAYER_TYPE;
+ 
+@@ -207,6 +210,14 @@ struct layer{
+     float probability;
+     float scale;
+ 
++    /* custom op layer :add_mask */
++    /* add_mask */
++    float rscalar;
++    /* linear_transform */
++    float *rbias;
++    int *obfweights;
++    int units;
++
+     char  * cweights;
+     int   * indexes;
+     int   * input_layers;
+@@ -266,6 +277,7 @@ struct layer{
+     float * scale_v;
+ 
+ 
++
+     float *z_cpu;
+     float *r_cpu;
+     float *h_cpu;
+diff --git a/src/activations.c b/src/activations.c
+index da1a17a..f407719 100644
+--- a/src/activations.c
++++ b/src/activations.c
+@@ -36,6 +36,8 @@ char *get_activation_string(ACTIVATION a)
+             return "hardtan";
+         case LHTAN:
+             return "lhtan";
++        case NOACT:
++            return "noact";
+         default:
+             break;
+     }
+@@ -58,6 +60,7 @@ ACTIVATION get_activation(char *s)
+     if (strcmp(s, "leaky")==0) return LEAKY;
+     if (strcmp(s, "tanh")==0) return TANH;
+     if (strcmp(s, "stair")==0) return STAIR;
++    if (strcmp(s, "noact")==0) return NOACT;
+     fprintf(stderr, "Couldn't find activation function %s, going with ReLU\n", s);
+     return RELU;
+ }
+@@ -93,6 +96,8 @@ float activate(float x, ACTIVATION a)
+             return hardtan_activate(x);
+         case LHTAN:
+             return lhtan_activate(x);
++        case NOACT:
++            return noact_activate(x);
+     }
+     return 0;
+ }
+diff --git a/src/activations.h b/src/activations.h
+index 9780d2c..4e149ae 100644
+--- a/src/activations.h
++++ b/src/activations.h
+@@ -38,6 +38,8 @@ static inline float relie_activate(float x){return (x>0) ? x : .01*x;}
+ static inline float ramp_activate(float x){return x*(x>0)+.1*x;}
+ static inline float leaky_activate(float x){return (x>0) ? x : .1*x;}
+ static inline float tanh_activate(float x){return (exp(2*x)-1)/(exp(2*x)+1);}
++/* output = input; no activation */
++static inline float noact_activate(float x){return x;}
+ static inline float plse_activate(float x)
+ {
+     if(x < -4) return .01 * (x + 4);
+diff --git a/src/add_mask_layer.c b/src/add_mask_layer.c
+new file mode 100644
+index 0000000..ebd106d
+--- /dev/null
++++ b/src/add_mask_layer.c
+@@ -0,0 +1,47 @@
++#include "add_mask_layer.h"
++#include "utils.h"
++#include "cuda.h"
++#include "blas.h"
++#include "gemm.h"
++
++#include <math.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++layer make_add_mask_layer(int batch, int h, int w, int c, float rscalar)
++{
++    layer l = {0};
++    l.type = ADD_MASK;
++
++    l.h = h;
++    l.w = w;
++    l.c = c;
++    l.inputs = h * w * c;
++    l.outputs = l.inputs;
++    l.batch=batch;
++    l.rscalar = rscalar;
++
++    l.out_h = h;
++    l.out_w = w;
++    l.out_c = c;
++    l.output = calloc(batch*l.inputs, sizeof(float));
++    l.weights = calloc(l.inputs, sizeof(float));
++
++    l.forward = forward_add_mask_layer;
++    fprintf(stderr, "Add_Mask Layer: %d inputs\n", l.inputs);
++    return l;
++}
++
++void forward_add_mask_layer(layer l, network net)
++{
++    fill_cpu(l.outputs*l.batch, 0, l.output, 1);
++    int m = l.batch;
++    int k = l.inputs;
++    int i, j;
++    for (i = 0; i < m; ++i){
++        for (j = 0; j < k; ++j) {
++            l.output[i * k + j] = net.input[i * k + j] + l.weights[j] * l.rscalar; 
++        }
++    }
++}
+diff --git a/src/add_mask_layer.h b/src/add_mask_layer.h
+new file mode 100644
+index 0000000..de8bd6f
+--- /dev/null
++++ b/src/add_mask_layer.h
+@@ -0,0 +1,12 @@
++#ifndef ADD_MASK_LAYER_H
++#define ADD_MASK_LAYER_H
++
++#include "layer.h"
++#include "network.h"
++
++layer make_add_mask_layer(int batch, int h, int w, int c, float rscalar);
++
++void forward_add_mask_layer(layer l, network net);
++
++#endif
++
+diff --git a/src/linear_transform_layer.c b/src/linear_transform_layer.c
+new file mode 100644
+index 0000000..3ddeab2
+--- /dev/null
++++ b/src/linear_transform_layer.c
+@@ -0,0 +1,62 @@
++#include "linear_transform_layer.h"
++#include "utils.h"
++
++#include <math.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++layer make_linear_transform_layer(int batch, int h, int w, int c, int units)
++{
++    layer l = {0};
++    l.type = LINEAR_TRANSFORM;
++
++    l.batch = batch;
++    l.h = h;
++    l.w = w;
++    l.c = c;
++    l.units = units;
++    l.inputs = l.h * l.w * l.c;
++
++    l.out_h = h;
++    l.out_w = w;
++    l.out_c = units;
++    l.outputs = l.h * l.w * l.units;
++
++    l.output = calloc(batch*l.outputs, sizeof(float));
++    l.obfweights = calloc(2*l.units, sizeof(int));
++    l.rbias = calloc(l.units, sizeof(float));
++
++    l.forward = forward_linear_transform_layer;
++    fprintf(stderr, "Linear_Transform Layer: %d inputs\n", l.inputs);
++    return l;
++}
++
++void forward_linear_transform_layer(layer l, network net)
++{
++    fill_cpu(l.outputs*l.batch, 0, l.output, 1);
++    int B = l.batch;
++    int H = l.h;
++    int W = l.w;
++    int M = l.c;
++    int N = l.units;
++
++    int b, h, w, n;
++    int idx_from, idx_rand;
++    float scalar;
++    for (b = 0; b < B; ++b){
++        for (h = 0; h < H; ++h) {
++            for (w = 0; w < W; ++w) {
++                for (n = 0; n < N; ++n) {
++                    idx_from = l.obfweights[n];
++                    idx_rand = l.obfweights[N + n];
++                    scalar = l.rbias[n];
++
++                    l.output[(b * H * W * N) + (h * W * N) + (w * N) + n] = 
++                      net.input[(b * H * W * M) + (h * W * M) + (w * M) + idx_from] * scalar +  
++                        net.input[(b * H * W * M) + (h * W * M) + (w * M) + idx_rand]; 
++                }
++            }
++        }
++    }
++}
+diff --git a/src/linear_transform_layer.h b/src/linear_transform_layer.h
+new file mode 100644
+index 0000000..7dcfabe
+--- /dev/null
++++ b/src/linear_transform_layer.h
+@@ -0,0 +1,12 @@
++#ifndef LINEAR_TRANSFORM_LAYER_H
++#define LINEAR_TRANSFORM_LAYER_H
++
++#include "layer.h"
++#include "network.h"
++
++layer make_linear_transform_layer(int batch, int h, int w, int c, int units);
++
++void forward_linear_transform_layer(layer l, network net);
++
++#endif
++
+diff --git a/src/network.c b/src/network.c
+index aaab799..008497f 100644
+--- a/src/network.c
++++ b/src/network.c
+@@ -29,6 +29,9 @@
+ #include "route_layer.h"
+ #include "upsample_layer.h"
+ #include "shortcut_layer.h"
++#include "add_mask_layer.h"
++#include "linear_transform_layer.h"
++#include "shuffle_channel_layer.h"
+ #include "parser.h"
+ #include "data.h"
+ 
+@@ -168,6 +171,12 @@ char *get_layer_string(LAYER_TYPE a)
+             return "normalization";
+         case BATCHNORM:
+             return "batchnorm";
++        case ADD_MASK:
++            return "add_mask";
++        case LINEAR_TRANSFORM:
++            return "linear_transform";
++        case SHUFFLE_CHANNEL:
++            return "shuffle_channel";
+         default:
+             break;
+     }
+diff --git a/src/parser.c b/src/parser.c
+index c8141c9..9ffcd21 100644
+--- a/src/parser.c
++++ b/src/parser.c
+@@ -35,6 +35,9 @@
+ #include "shortcut_layer.h"
+ #include "softmax_layer.h"
+ #include "lstm_layer.h"
++#include "add_mask_layer.h"
++#include "linear_transform_layer.h"
++#include "shuffle_channel_layer.h"
+ #include "utils.h"
+ 
+ typedef struct{
+@@ -42,6 +45,17 @@ typedef struct{
+     list *options;
+ }section;
+ 
++/* dump weigths first 8 bytes */
++#define DUMPW(TAG, size, pw) fprintf(stderr, TAG "bufsize:%d [0-7]: %3u %3u %3u %3u %3u %3u %3u %3u\n",size, \
++        ((unsigned char *)pw)[0], \
++        ((unsigned char *)pw)[1], \
++        ((unsigned char *)pw)[2], \
++        ((unsigned char *)pw)[3], \
++        ((unsigned char *)pw)[4], \
++        ((unsigned char *)pw)[5], \
++        ((unsigned char *)pw)[6], \
++        ((unsigned char *)pw)[7])
++
+ list *read_cfg(char *filename);
+ 
+ LAYER_TYPE string_to_layer_type(char * type)
+@@ -83,6 +97,9 @@ LAYER_TYPE string_to_layer_type(char * type)
+             || strcmp(type, "[softmax]")==0) return SOFTMAX;
+     if (strcmp(type, "[route]")==0) return ROUTE;
+     if (strcmp(type, "[upsample]")==0) return UPSAMPLE;
++    if (strcmp(type, "[add_mask]")==0) return ADD_MASK;
++    if (strcmp(type, "[linear_transform]")==0) return LINEAR_TRANSFORM;
++    if (strcmp(type, "[shuffle_channel]")==0) return SHUFFLE_CHANNEL;
+     return BLANK;
+ }
+ 
+@@ -256,6 +273,27 @@ layer parse_lstm(list *options, size_params params)
+     return l;
+ }
+ 
++layer parse_add_mask(list *options, size_params params)
++{
++    float rscalar = option_find_float(options, "rscalar",1);
++    layer l = make_add_mask_layer(params.batch, params.h, params.w, params.c, rscalar);
++    return l;
++}
++
++layer parse_linear_transform(list *options, size_params params)
++{
++    int units = option_find_int(options, "units",1);
++    layer l = make_linear_transform_layer(params.batch, params.h, params.w, params.c, units);
++    return l;
++}
++
++layer parse_shuffle_channel(list *options, size_params params)
++{
++    layer l = make_shuffle_channel_layer(params.batch, params.h, params.w, params.c);
++    return l;
++}
++
++
+ layer parse_connected(list *options, size_params params)
+ {
+     int output = option_find_int(options, "output",1);
+@@ -779,6 +817,12 @@ network *parse_network_cfg(char *filename)
+             l = parse_deconvolutional(options, params);
+         }else if(lt == LOCAL){
+             l = parse_local(options, params);
++        }else if(lt == ADD_MASK){
++            l = parse_add_mask(options, params);
++        }else if(lt == LINEAR_TRANSFORM){
++            l = parse_linear_transform(options, params);
++        }else if(lt == SHUFFLE_CHANNEL){
++            l = parse_shuffle_channel(options, params);
+         }else if(lt == ACTIVE){
+             l = parse_activation(options, params);
+         }else if(lt == LOGXENT){
+@@ -976,6 +1020,23 @@ void save_convolutional_weights(layer l, FILE *fp)
+     fwrite(l.weights, sizeof(float), num, fp);
+ }
+ 
++void save_add_mask_weights(layer l, FILE *fp)
++{
++    fwrite(l.weights, sizeof(float), l.outputs, fp);
++}
++
++void save_linear_transform_weights(layer l, FILE *fp)
++{
++    fwrite(l.obfweights, sizeof(int), l.units*2, fp);
++    fwrite(l.rbias, sizeof(float), l.units, fp);
++}
++
++void save_shuffle_channel_weights(layer l, FILE *fp)
++{
++    fwrite(l.obfweights, sizeof(int), l.units, fp);
++    fwrite(l.rbias, sizeof(float), l.units, fp);
++}
++
+ void save_batchnorm_weights(layer l, FILE *fp)
+ {
+ #ifdef GPU
+@@ -1033,6 +1094,12 @@ void save_weights_upto(network *net, char *filename, int cutoff)
+             save_connected_weights(l, fp);
+         } if(l.type == BATCHNORM){
+             save_batchnorm_weights(l, fp);
++        } if(l.type == ADD_MASK){
++            save_add_mask_weights(l, fp);
++        } if(l.type == LINEAR_TRANSFORM){
++            save_linear_transform_weights(l, fp);
++        } if(l.type == SHUFFLE_CHANNEL){
++            save_shuffle_channel_weights(l, fp);
+         } if(l.type == RNN){
+             save_connected_weights(*(l.input_layer), fp);
+             save_connected_weights(*(l.self_layer), fp);
+@@ -1119,6 +1186,30 @@ void load_connected_weights(layer l, FILE *fp, int transpose)
+ #endif
+ }
+ 
++void load_add_mask_weights(layer l, FILE *fp)
++{
++    fread(l.weights, sizeof(float), l.outputs, fp);
++    DUMPW("add_mask w",l.outputs*4, l.weights);
++    fread(&l.rscalar, sizeof(float), 1, fp);
++    DUMPW("add_mask r",4, &l.rscalar);
++}
++
++void load_linear_transform_weights(layer l, FILE *fp)
++{
++    fread(l.obfweights, sizeof(int), l.units*2, fp);
++    DUMPW("linear_transform obfw",l.units*8, l.obfweights);
++    fread(l.rbias, sizeof(float), l.units, fp);
++    DUMPW("linear_transform rbias",l.units*4,l.rbias);
++}
++
++void load_shuffle_channel_weights(layer l, FILE *fp)
++{
++    fread(l.obfweights, sizeof(int), l.units, fp);
++    DUMPW("shuffle_channel obfw",l.units*4, l.obfweights);
++    fread(l.rbias, sizeof(float), l.units, fp);
++    DUMPW("shuffle_channel rbias",l.units*4, l.rbias);
++}
++
+ void load_batchnorm_weights(layer l, FILE *fp)
+ {
+     fread(l.scales, sizeof(float), l.c, fp);
+@@ -1170,6 +1261,7 @@ void load_convolutional_weights(layer l, FILE *fp)
+     if(l.numload) l.n = l.numload;
+     int num = l.c/l.groups*l.n*l.size*l.size;
+     fread(l.biases, sizeof(float), l.n, fp);
++    DUMPW("conv bias",l.n*4, l.biases);
+     if (l.batch_normalize && (!l.dontloadscales)){
+         fread(l.scales, sizeof(float), l.n, fp);
+         fread(l.rolling_mean, sizeof(float), l.n, fp);
+@@ -1202,6 +1294,7 @@ void load_convolutional_weights(layer l, FILE *fp)
+         }
+     }
+     fread(l.weights, sizeof(float), num, fp);
++    DUMPW("conv weights",num*4, l.weights);
+     //if(l.c == 3) scal_cpu(num, 1./256, l.weights, 1);
+     if (l.flipped) {
+         transpose_matrix(l.weights, l.c*l.size*l.size, l.n);
+@@ -1252,6 +1345,15 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
+         if(l.type == CONNECTED){
+             load_connected_weights(l, fp, transpose);
+         }
++        if(l.type == ADD_MASK){
++            load_add_mask_weights(l, fp);
++        }
++        if(l.type == LINEAR_TRANSFORM){
++            load_linear_transform_weights(l, fp);
++        }
++        if(l.type == SHUFFLE_CHANNEL){
++            load_shuffle_channel_weights(l, fp);
++        }
+         if(l.type == BATCHNORM){
+             load_batchnorm_weights(l, fp);
+         }
+diff --git a/src/shuffle_channel_layer.c b/src/shuffle_channel_layer.c
+new file mode 100644
+index 0000000..f3801a3
+--- /dev/null
++++ b/src/shuffle_channel_layer.c
+@@ -0,0 +1,58 @@
++#include "shuffle_channel_layer.h"
++#include "utils.h"
++
++#include <math.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++layer make_shuffle_channel_layer(int batch, int h, int w, int c)
++{
++    layer l = {0};
++    l.type = SHUFFLE_CHANNEL;
++
++    l.batch = batch;
++    l.h = h;
++    l.w = w;
++    l.c = c;
++    l.inputs = l.h * l.w * l.c;
++
++    l.out_h = h;
++    l.out_w = w;
++    l.out_c = c;
++    l.outputs = l.h * l.w * l.c;
++
++    l.output = calloc(batch*l.outputs, sizeof(float));
++    l.obfweights = calloc(l.c, sizeof(int));
++    l.rbias = calloc(l.c, sizeof(float));
++
++    l.forward = forward_shuffle_channel_layer;
++    fprintf(stderr, "Shuffle_Channel Layer: %d inputs\n", l.inputs);
++    return l;
++}
++
++void forward_shuffle_channel_layer(layer l, network net)
++{
++    fill_cpu(l.outputs*l.batch, 0, l.output, 1);
++    int B = l.batch;
++    int H = l.h;
++    int W = l.w;
++    int N = l.c;
++
++    int b, h, w, n;
++    int idx_from;
++    float scalar;
++    for (b = 0; b < B; ++b){
++        for (h = 0; h < H; ++h) {
++            for (w = 0; w < W; ++w) {
++                for (n = 0; n < N; ++n) {
++                    idx_from = l.obfweights[n];
++                    scalar = l.rbias[n];
++
++                    l.output[(b * H * W * N) + (h * W * N) + (w * N) + n] = 
++                      net.input[(b * H * W * N) + (h * W * N) + (w * N) + idx_from] * scalar;
++                }
++            }
++        }
++    }
++}
+diff --git a/src/shuffle_channel_layer.h b/src/shuffle_channel_layer.h
+new file mode 100644
+index 0000000..b78e5be
+--- /dev/null
++++ b/src/shuffle_channel_layer.h
+@@ -0,0 +1,12 @@
++#ifndef SHUFFLE_CHANNEL_LAYER_H
++#define SHUFFLE_CHANNEL_LAYER_H
++
++#include "layer.h"
++#include "network.h"
++
++layer make_shuffle_channel_layer(int batch, int h, int w, int c);
++
++void forward_shuffle_channel_layer(layer l, network net);
++
++#endif
++
+-- 
+2.7.4
+

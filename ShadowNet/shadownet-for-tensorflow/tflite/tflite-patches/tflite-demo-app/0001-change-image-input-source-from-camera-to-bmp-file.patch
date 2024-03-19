@@ -1,0 +1,211 @@
+From 6cfd52d51f5c748ccdbb2bfcd0f2bcca86e8c70e Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Wed, 15 Apr 2020 17:50:57 -0400
+Subject: [PATCH] change image input source from camera to bmp file
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ .../demo/app/src/main/AndroidManifest.xml     |  2 +-
+ .../Camera2BasicFragment.java                 | 62 +++++++++++++++----
+ .../tflitecamerademo/CameraActivity.java      |  2 +-
+ 3 files changed, 52 insertions(+), 14 deletions(-)
+
+diff --git a/tensorflow/lite/java/demo/app/src/main/AndroidManifest.xml b/tensorflow/lite/java/demo/app/src/main/AndroidManifest.xml
+index 95b6b7016f..7c07c06d40 100644
+--- a/tensorflow/lite/java/demo/app/src/main/AndroidManifest.xml
++++ b/tensorflow/lite/java/demo/app/src/main/AndroidManifest.xml
+@@ -19,7 +19,7 @@
+     package="com.example.android.tflitecamerademo">
+ 
+     <uses-permission android:name="android.permission.CAMERA" />
+-
++    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+     <uses-feature android:name="android.hardware.camera" />
+     <uses-feature android:name="android.hardware.camera.autofocus" />
+ 
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java
+index f0b42983bd..0e5f1928d9 100644
+--- a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/Camera2BasicFragment.java
+@@ -24,8 +24,10 @@ import android.content.Context;
+ import android.content.DialogInterface;
+ import android.content.pm.PackageInfo;
+ import android.content.pm.PackageManager;
++import android.content.res.AssetManager;
+ import android.content.res.Configuration;
+ import android.graphics.Bitmap;
++import android.graphics.BitmapFactory;
+ import android.graphics.ImageFormat;
+ import android.graphics.Matrix;
+ import android.graphics.Point;
+@@ -63,6 +65,7 @@ import android.widget.TextView;
+ import android.widget.Toast;
+ import android.support.v13.app.FragmentCompat;
+ import java.io.IOException;
++import java.io.InputStream;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collections;
+@@ -71,6 +74,7 @@ import java.util.List;
+ import java.util.concurrent.Semaphore;
+ import java.util.concurrent.TimeUnit;
+ 
++
+ /** Basic fragments for the Camera. */
+ public class Camera2BasicFragment extends Fragment
+     implements FragmentCompat.OnRequestPermissionsResultCallback {
+@@ -93,7 +97,7 @@ public class Camera2BasicFragment extends Fragment
+   private ListView deviceView;
+   private ListView modelView;
+ 
+-
++  private String photoPath="test.bmp";
+   /** Max preview width that is guaranteed by Camera2 API */
+   private static final int MAX_PREVIEW_WIDTH = 1920;
+ 
+@@ -109,8 +113,20 @@ public class Camera2BasicFragment extends Fragment
+ 
+         @Override
+         public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
+-          openCamera(width, height);
+-        }
++          Log.d(TAG,"onSurfaceTextureAvailable comes!");
++          //openCamera(width, height);
++          //new Thread(new Runnable() {
++          //  @Override
++          //  public void run() {
++          //    while(true){
++          //      //Log.i(TAG, "asdf");
++          //    }
++          //  }
++          //}).start();
++          //while(true){
++          //  Log.d(TAG,"keep thread going!");
++          //}
++      }
+ 
+         @Override
+         public void onSurfaceTextureSizeChanged(SurfaceTexture texture, int width, int height) {
+@@ -346,6 +362,7 @@ public class Camera2BasicFragment extends Fragment
+       String device = deviceStrings.get(deviceIndex);
+ 
+       Log.i(TAG, "Changing model to " + model + " device " + device);
++      Log.i(TAG, "ZC:Changing model to " + model + " device " + device);
+ 
+       // Try to load model.
+       try {
+@@ -464,7 +481,7 @@ public class Camera2BasicFragment extends Fragment
+     // a camera and start preview from here (otherwise, we wait until the surface is ready in
+     // the SurfaceTextureListener).
+     if (textureView.isAvailable()) {
+-      openCamera(textureView.getWidth(), textureView.getHeight());
++      //openCamera(textureView.getWidth(), textureView.getHeight());
+     } else {
+       textureView.setSurfaceTextureListener(surfaceTextureListener);
+     }
+@@ -472,6 +489,8 @@ public class Camera2BasicFragment extends Fragment
+ 
+   @Override
+   public void onPause() {
++    Log.d(TAG, "onPause Called!");
++
+     closeCamera();
+     stopBackgroundThread();
+     super.onPause();
+@@ -479,6 +498,7 @@ public class Camera2BasicFragment extends Fragment
+ 
+   @Override
+   public void onDestroy() {
++    Log.d(TAG, "onDestroy Called!");
+     if (classifier != null) {
+       classifier.close();
+     }
+@@ -514,9 +534,9 @@ public class Camera2BasicFragment extends Fragment
+         Size largest =
+             Collections.max(
+                 Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
+-        imageReader =
+-            ImageReader.newInstance(
+-                largest.getWidth(), largest.getHeight(), ImageFormat.JPEG, /*maxImages*/ 2);
++     //   imageReader =
++     //       ImageReader.newInstance(
++     //           largest.getWidth(), largest.getHeight(), ImageFormat.JPEG, /*maxImages*/ 2);
+ 
+         // Find out if we need to swap dimension to get the preview size relative to sensor
+         // coordinate.
+@@ -684,6 +704,7 @@ public class Camera2BasicFragment extends Fragment
+     synchronized (lock) {
+       runClassifier = true;
+     }
++    Log.i(TAG,"here in startBackgroundThread!");
+     backgroundHandler.post(periodicClassify);
+     updateActiveModel();
+   }
+@@ -710,7 +731,12 @@ public class Camera2BasicFragment extends Fragment
+         public void run() {
+           synchronized (lock) {
+             if (runClassifier) {
+-              classifyFrame();
++              try {
++                classifyFrame();
++              } catch (IOException e){
++                e.printStackTrace();
++              }
++
+             }
+           }
+           backgroundHandler.post(periodicClassify);
+@@ -808,16 +834,28 @@ public class Camera2BasicFragment extends Fragment
+   }
+ 
+   /** Classifies a frame from the preview stream. */
+-  private void classifyFrame() {
+-    if (classifier == null || getActivity() == null || cameraDevice == null) {
++  private void classifyFrame() throws IOException {
++    //if (classifier == null || getActivity() == null || cameraDevice == null) {
++    if (classifier == null || getActivity() == null ) {
+       // It's important to not call showToast every frame, or else the app will starve and
+       // hang. updateActiveModel() already puts an error message up with showToast.
+       // showToast("Uninitialized Classifier or invalid context.");
+       return;
+     }
++    Log.i(TAG, "SUNZHI:load bitmap test.bmp and classify it");
+     SpannableStringBuilder textToShow = new SpannableStringBuilder();
+-    Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
+-    classifier.classifyFrame(bitmap, textToShow);
++    //Bitmap bitmap = textureView.getBitmap(classifier.getImageSizeX(), classifier.getImageSizeY());
++    BitmapFactory.Options options = new BitmapFactory.Options();
++    options.inPreferredConfig = Bitmap.Config.ARGB_8888;
++    Activity activity = getActivity();
++    AssetManager assetManager = activity.getAssets();
++    InputStream is = assetManager.open(photoPath);
++    Bitmap  bitmap = BitmapFactory.decodeStream(is,null,options);
++    //Bitmap bitmap = BitmapFactory.decodeFile(photoPath, options);
++    Matrix matrix = new Matrix();
++    matrix.postScale(0.5f, 0.5f);
++    Bitmap croppedBitmap = Bitmap.createBitmap(bitmap, 100, 100,classifier.getImageSizeX(), classifier.getImageSizeY(), matrix, true);
++    classifier.classifyFrame(croppedBitmap, textToShow);
+     bitmap.recycle();
+     showToast(textToShow);
+   }
+diff --git a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/CameraActivity.java b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/CameraActivity.java
+index e7161ddb26..6d89b91e58 100644
+--- a/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/CameraActivity.java
++++ b/tensorflow/lite/java/demo/app/src/main/java/com/example/android/tflitecamerademo/CameraActivity.java
+@@ -20,7 +20,6 @@ import android.os.Bundle;
+ 
+ /** Main {@code Activity} class for the Camera app. */
+ public class CameraActivity extends Activity {
+-
+   @Override
+   protected void onCreate(Bundle savedInstanceState) {
+     super.onCreate(savedInstanceState);
+@@ -32,4 +31,5 @@ public class CameraActivity extends Activity {
+           .commit();
+     }
+   }
++
+ }
+-- 
+2.17.1
+

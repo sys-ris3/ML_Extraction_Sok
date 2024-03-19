@@ -1,0 +1,46 @@
+From a1f10bb3b939072f4da93f09c78ebaecca539a0d Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+Date: Wed, 28 Apr 2021 14:21:12 -0400
+Subject: [PATCH] atf-fastboot add build option for 64 MB memory
+
+Signed-off-by: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+---
+ Makefile               | 5 +++++
+ plat/hikey/hikey_def.h | 4 ++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/Makefile b/Makefile
+index 33ac548..0de334b 100644
+--- a/Makefile
++++ b/Makefile
+@@ -283,6 +283,11 @@ ifeq (${DISABLE_PEDANTIC},0)
+         CFLAGS		+= 	-pedantic
+ endif
+ 
++CFG_TZRAM_SIZE ?= 64
++ifeq ($(CFG_TZRAM_SIZE),64)
++   CFLAGS += -DHIKEY960_TZRAM_64MB
++endif
++
+ ################################################################################
+ # Build options checks
+ ################################################################################
+diff --git a/plat/hikey/hikey_def.h b/plat/hikey/hikey_def.h
+index 2007633..492c04f 100644
+--- a/plat/hikey/hikey_def.h
++++ b/plat/hikey/hikey_def.h
+@@ -50,7 +50,11 @@
+  *   - Secure DRAM (default is the top 16MB)
+  *   - Non-Secure DRAM (remaining DRAM starting at DRAM_BASE)
+  */
++#ifdef HIKEY960_TZRAM_64MB
++#define DRAM_SEC_SIZE			0x04000000
++#else
+ #define DRAM_SEC_SIZE			0x01000000
++#endif
+ #define DRAM_SEC_BASE			(DRAM_BASE + DRAM_SIZE - DRAM_SEC_SIZE)
+ 
+ #define DRAM_NS_BASE			DRAM_BASE
+-- 
+2.7.4
+

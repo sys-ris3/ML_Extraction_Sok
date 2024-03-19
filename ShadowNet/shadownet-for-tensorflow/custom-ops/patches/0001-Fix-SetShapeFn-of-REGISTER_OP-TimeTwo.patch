@@ -1,0 +1,25 @@
+From 4362fa4c078ef319267be7693b3fe3e50369ff4f Mon Sep 17 00:00:00 2001
+From: Carbo Kuo <BYVoid@users.noreply.github.com>
+Date: Fri, 17 Apr 2020 17:53:36 +0900
+Subject: [PATCH 1/9] Fix 'SetShapeFn' of REGISTER_OP("TimeTwo").
+
+There is only one input.
+---
+ tensorflow_time_two/cc/ops/time_two_ops.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tensorflow_time_two/cc/ops/time_two_ops.cc b/tensorflow_time_two/cc/ops/time_two_ops.cc
+index d2d4555..974ad30 100644
+--- a/tensorflow_time_two/cc/ops/time_two_ops.cc
++++ b/tensorflow_time_two/cc/ops/time_two_ops.cc
+@@ -23,6 +23,6 @@ REGISTER_OP("TimeTwo")
+     .Input("in: T")
+     .Output("out: T")
+     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+-      c->set_output(0, c->input(1));
++      c->set_output(0, c->input(0));
+       return Status::OK();
+     });
+-- 
+2.7.4
+

@@ -1,0 +1,1295 @@
+From 286cb688a522bcd2ddf5d18154e995fb928b0d72 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Sat, 25 Apr 2020 18:04:41 +0000
+Subject: [PATCH 2/9] add custom ops
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ BUILD                                              |   3 +
+ MANIFEST.in                                        |   3 +
+ build_pip_pkg.sh                                   |   3 +
+ tensorflow_add_mask/BUILD                          |  65 ++++++++++++++
+ tensorflow_add_mask/__init__.py                    |  19 +++++
+ .../__pycache__/__init__.cpython-36.pyc            | Bin 0 -> 302 bytes
+ tensorflow_add_mask/cc/kernels/add_mask_kernels.cc |  78 +++++++++++++++++
+ tensorflow_add_mask/cc/ops/add_mask_ops.cc         |  37 ++++++++
+ tensorflow_add_mask/python/__init__.py             |   1 +
+ .../python/__pycache__/__init__.cpython-36.pyc     | Bin 0 -> 137 bytes
+ tensorflow_add_mask/python/ops/__init__.py         |   1 +
+ .../python/ops/__pycache__/__init__.cpython-36.pyc | Bin 0 -> 141 bytes
+ .../ops/__pycache__/zero_out_ops.cpython-36.pyc    | Bin 0 -> 546 bytes
+ tensorflow_add_mask/python/ops/add_mask_ops.py     |  26 ++++++
+ .../python/ops/add_mask_ops_test.py                |  38 +++++++++
+ tensorflow_linear_transform/BUILD                  |  65 ++++++++++++++
+ tensorflow_linear_transform/__init__.py            |  19 +++++
+ .../__pycache__/__init__.cpython-36.pyc            | Bin 0 -> 302 bytes
+ .../cc/kernels/linear_transform_kernels.cc         |  95 +++++++++++++++++++++
+ .../cc/ops/linear_transform_ops.cc                 |  58 +++++++++++++
+ tensorflow_linear_transform/python/__init__.py     |   1 +
+ .../python/__pycache__/__init__.cpython-36.pyc     | Bin 0 -> 137 bytes
+ tensorflow_linear_transform/python/ops/__init__.py |   1 +
+ .../python/ops/__pycache__/__init__.cpython-36.pyc | Bin 0 -> 141 bytes
+ .../ops/__pycache__/zero_out_ops.cpython-36.pyc    | Bin 0 -> 546 bytes
+ .../python/ops/linear_transform_ops.py             |  26 ++++++
+ .../python/ops/linear_transform_ops_test.py        |  50 +++++++++++
+ tensorflow_shuffle_channel/BUILD                   |  65 ++++++++++++++
+ tensorflow_shuffle_channel/__init__.py             |  19 +++++
+ .../__pycache__/__init__.cpython-36.pyc            | Bin 0 -> 302 bytes
+ .../cc/kernels/shuffle_channel_kernels.cc          |  85 ++++++++++++++++++
+ .../cc/ops/shuffle_channel_ops.cc                  |  37 ++++++++
+ tensorflow_shuffle_channel/python/__init__.py      |   1 +
+ .../python/__pycache__/__init__.cpython-36.pyc     | Bin 0 -> 137 bytes
+ tensorflow_shuffle_channel/python/ops/__init__.py  |   1 +
+ .../python/ops/__pycache__/__init__.cpython-36.pyc | Bin 0 -> 141 bytes
+ .../ops/__pycache__/zero_out_ops.cpython-36.pyc    | Bin 0 -> 546 bytes
+ .../python/ops/shuffle_channel_ops.py              |  26 ++++++
+ .../python/ops/shuffle_channel_ops_test.py         |  48 +++++++++++
+ 39 files changed, 871 insertions(+)
+ create mode 100644 tensorflow_add_mask/BUILD
+ create mode 100644 tensorflow_add_mask/__init__.py
+ create mode 100644 tensorflow_add_mask/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_add_mask/cc/kernels/add_mask_kernels.cc
+ create mode 100644 tensorflow_add_mask/cc/ops/add_mask_ops.cc
+ create mode 100644 tensorflow_add_mask/python/__init__.py
+ create mode 100644 tensorflow_add_mask/python/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_add_mask/python/ops/__init__.py
+ create mode 100644 tensorflow_add_mask/python/ops/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_add_mask/python/ops/__pycache__/zero_out_ops.cpython-36.pyc
+ create mode 100644 tensorflow_add_mask/python/ops/add_mask_ops.py
+ create mode 100644 tensorflow_add_mask/python/ops/add_mask_ops_test.py
+ create mode 100644 tensorflow_linear_transform/BUILD
+ create mode 100644 tensorflow_linear_transform/__init__.py
+ create mode 100644 tensorflow_linear_transform/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_linear_transform/cc/kernels/linear_transform_kernels.cc
+ create mode 100644 tensorflow_linear_transform/cc/ops/linear_transform_ops.cc
+ create mode 100644 tensorflow_linear_transform/python/__init__.py
+ create mode 100644 tensorflow_linear_transform/python/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_linear_transform/python/ops/__init__.py
+ create mode 100644 tensorflow_linear_transform/python/ops/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_linear_transform/python/ops/__pycache__/zero_out_ops.cpython-36.pyc
+ create mode 100644 tensorflow_linear_transform/python/ops/linear_transform_ops.py
+ create mode 100644 tensorflow_linear_transform/python/ops/linear_transform_ops_test.py
+ create mode 100644 tensorflow_shuffle_channel/BUILD
+ create mode 100644 tensorflow_shuffle_channel/__init__.py
+ create mode 100644 tensorflow_shuffle_channel/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_shuffle_channel/cc/kernels/shuffle_channel_kernels.cc
+ create mode 100644 tensorflow_shuffle_channel/cc/ops/shuffle_channel_ops.cc
+ create mode 100644 tensorflow_shuffle_channel/python/__init__.py
+ create mode 100644 tensorflow_shuffle_channel/python/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_shuffle_channel/python/ops/__init__.py
+ create mode 100644 tensorflow_shuffle_channel/python/ops/__pycache__/__init__.cpython-36.pyc
+ create mode 100644 tensorflow_shuffle_channel/python/ops/__pycache__/zero_out_ops.cpython-36.pyc
+ create mode 100644 tensorflow_shuffle_channel/python/ops/shuffle_channel_ops.py
+ create mode 100644 tensorflow_shuffle_channel/python/ops/shuffle_channel_ops_test.py
+
+diff --git a/BUILD b/BUILD
+index e38db7f..8000ee6 100644
+--- a/BUILD
++++ b/BUILD
+@@ -7,5 +7,8 @@ sh_binary(
+         "setup.py",
+         "//tensorflow_zero_out:zero_out_py",
+         "//tensorflow_time_two:time_two_py",
++        "//tensorflow_add_mask:add_mask_py",
++        "//tensorflow_linear_transform:linear_transform_py",
++        "//tensorflow_shuffle_channel:shuffle_channel_py",
+     ],
+ )
+diff --git a/MANIFEST.in b/MANIFEST.in
+index 0055ae3..f05874c 100644
+--- a/MANIFEST.in
++++ b/MANIFEST.in
+@@ -1,2 +1,5 @@
+ recursive-include tensorflow_zero_out/ *.so
+ recursive-include tensorflow_time_two/ *.so
++recursive-include tensorflow_add_mask/ *.so
++recursive-include tensorflow_linear_transform/ *.so
++recursive-include tensorflow_shuffle_channel/ *.so
+diff --git a/build_pip_pkg.sh b/build_pip_pkg.sh
+index 3316538..aebed20 100755
+--- a/build_pip_pkg.sh
++++ b/build_pip_pkg.sh
+@@ -55,6 +55,9 @@ function main() {
+   touch "${TMPDIR}"/stub.cc
+   rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_zero_out "${TMPDIR}"
+   rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_time_two "${TMPDIR}"
++  rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_add_mask "${TMPDIR}"
++  rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_linear_transform "${TMPDIR}"
++  rsync -avm -L --exclude='*_test.py' ${PIP_FILE_PREFIX}tensorflow_shuffle_channel "${TMPDIR}"
+ 
+   pushd ${TMPDIR}
+   echo $(date) : "=== Building wheel"
+diff --git a/tensorflow_add_mask/BUILD b/tensorflow_add_mask/BUILD
+new file mode 100644
+index 0000000..ffbbe4c
+--- /dev/null
++++ b/tensorflow_add_mask/BUILD
+@@ -0,0 +1,65 @@
++licenses(["notice"])  # Apache 2.0
++
++package(default_visibility = ["//visibility:public"])
++
++config_setting(
++    name = "windows",
++    constraint_values = ["@bazel_tools//platforms:windows"],
++)
++
++cc_binary(
++    name = 'python/ops/_add_mask_ops.so',
++    srcs = [
++        "cc/kernels/add_mask_kernels.cc",
++        "cc/ops/add_mask_ops.cc",
++    ],
++    linkshared = 1,
++    deps = [
++        "@local_config_tf//:libtensorflow_framework",
++        "@local_config_tf//:tf_header_lib",
++    ],
++    features = select({
++        ":windows": ["windows_export_all_symbols"],
++        "//conditions:default": [],
++    }),
++    copts = select({
++        ":windows": ["/DEIGEN_STRONG_INLINE=inline", "-DTENSORFLOW_MONOLITHIC_BUILD", "/DPLATFORM_WINDOWS", "/DEIGEN_HAS_C99_MATH", "/DTENSORFLOW_USE_EIGEN_THREADPOOL", "/DEIGEN_AVOID_STL_ARRAY", "/Iexternal/gemmlowp", "/wd4018", "/wd4577", "/DNOGDI", "/UTF_COMPILE_LIBRARY"],
++        "//conditions:default": ["-pthread", "-std=c++11", "-D_GLIBCXX_USE_CXX11_ABI=0"],
++    }),
++)
++
++py_library(
++    name = "add_mask_ops_py",
++    srcs = ([
++        "python/ops/add_mask_ops.py",
++    ]),
++    data = [
++        ":python/ops/_add_mask_ops.so"
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_test(
++    name = "add_mask_ops_py_test",
++    srcs = [
++        "python/ops/add_mask_ops_test.py"
++    ],
++    main = "python/ops/add_mask_ops_test.py",
++    deps = [
++        ":add_mask_ops_py",
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_library(
++    name = "add_mask_py",
++    srcs = ([
++        "__init__.py",
++        "python/__init__.py",
++        "python/ops/__init__.py",
++    ]),
++    deps = [
++        ":add_mask_ops_py"
++    ],
++    srcs_version = "PY2AND3",
++)
+diff --git a/tensorflow_add_mask/__init__.py b/tensorflow_add_mask/__init__.py
+new file mode 100644
+index 0000000..725143e
+--- /dev/null
++++ b/tensorflow_add_mask/__init__.py
+@@ -0,0 +1,19 @@
++# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ==============================================================================
++"""TensorFlow custom op example."""
++
++from __future__ import absolute_import
++
++from tensorflow_add_mask.python.ops.add_mask_ops import add_mask 
+diff --git a/tensorflow_add_mask/__pycache__/__init__.cpython-36.pyc b/tensorflow_add_mask/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e45b3b3d3de727881027b5bc38ad7843417f59b0
+GIT binary patch
+literal 302
+zcmZvXu}%Xq42E;L6soFK2WF&OPl(IFS^*Oy3k>K6tkR_7q~shWj#~Ogybsf@OuPaU
+zZc!x$Ecy3uOa5eE&1RF2v!~~qQixCSCnWn@&Q!4&(F#)-=?X7fS?qo3O0QbQUOk9<
+zv^#&aeZqL>a8s>vBJ>r8%5IlFINN+NMAXGFU%n)CnJjcZU?d)mcQztmru%v{oB|kJ
+z0Sps>b*3CGK-{0wUeJNRW<DG@n(#)i*f$tbbDRM;k)ILoBA#$L$hX!Jk@W9jml*Uv
+aG!4-89RV<Q7%x1U?CkZN8A-7yIh8*YfLJ#G
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_add_mask/cc/kernels/add_mask_kernels.cc b/tensorflow_add_mask/cc/kernels/add_mask_kernels.cc
+new file mode 100644
+index 0000000..721a975
+--- /dev/null
++++ b/tensorflow_add_mask/cc/kernels/add_mask_kernels.cc
+@@ -0,0 +1,78 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op_kernel.h"
++#include "tensorflow/core/framework/register_types.h"
++
++using namespace tensorflow;
++
++template <typename T>
++class AddMaskOp : public OpKernel {
++ public:
++  explicit AddMaskOp(OpKernelConstruction* context) : OpKernel(context) {}
++
++  void Compute(OpKernelContext* context) override {
++    // Grab the input tensor
++    const Tensor& input_tensor = context->input(0);
++
++    // Grab the weights tensor
++    const Tensor& weights_tensor = context->input(1);
++
++    // Grab the random scalar tensor
++    const Tensor& rscalar_tensor = context->input(2);
++
++    // check shapes of input, weights and rscalar
++    const TensorShape& input_shape = input_tensor.shape();
++    const TensorShape& weights_shape = weights_tensor.shape();
++    const TensorShape& rscalar_shape = rscalar_tensor.shape();
++    
++    // check input is a standing vector
++    DCHECK_EQ(input_shape.dims(), weights_shape.dims());
++    DCHECK_EQ(rscalar_shape.dims(), 0);
++    int dims = input_shape.dims();
++    for (int i = 0; i < dims; i++) {
++	// debug build check
++    	DCHECK_EQ(input_shape.dim_size(i), weights_shape.dim_size(i));
++	// release build check
++    	// CHECK_EQ(input_shape.dim_size(i), weights_shape.dim_size(i));
++    }
++
++    auto input = input_tensor.flat<T>();
++    auto weights = weights_tensor.flat<T>();
++    auto rscalar = rscalar_tensor.flat<T>();
++
++    // Create an output tensor
++    Tensor* output_tensor = NULL;
++    OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(),
++                                                     &output_tensor));
++    auto output_flat = output_tensor->template flat<T>();
++
++    // Mask all input element with mask tensor element.
++    const int N = input.size();
++    for (int i = 0; i < N; i++) {
++      output_flat(i) = input(i) + rscalar(0) * weights(i);
++    }
++
++  }
++};
++
++#define REGISTER_KERNEL(type)                                       \
++  REGISTER_KERNEL_BUILDER(                                          \
++      Name("AddMask").Device(DEVICE_CPU).TypeConstraint<type>("T"), \
++      AddMaskOp<type>)
++
++TF_CALL_REAL_NUMBER_TYPES(REGISTER_KERNEL);
++
++#undef REGISTER_KERNEL
+diff --git a/tensorflow_add_mask/cc/ops/add_mask_ops.cc b/tensorflow_add_mask/cc/ops/add_mask_ops.cc
+new file mode 100644
+index 0000000..05a838c
+--- /dev/null
++++ b/tensorflow_add_mask/cc/ops/add_mask_ops.cc
+@@ -0,0 +1,37 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op.h"
++#include "tensorflow/core/framework/register_types.h"
++#include "tensorflow/core/framework/shape_inference.h"
++
++using namespace tensorflow;
++
++REGISTER_OP("AddMask")
++    .Attr("T: realnumbertype")
++    .Input("input: T")
++    .Input("weights: T")
++    .Input("rscalar: T")
++    .Output("masked: T")
++    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
++      c->set_output(0, c->input(0));
++      return Status::OK();
++    })
++    .Doc(R"doc(
++Add a randomly scaled mask onto the input tensor.
++
++masked: A Tensor whose value is the input Tensor plus scaled `weights`
++  with `rscalar`.
++)doc");
+diff --git a/tensorflow_add_mask/python/__init__.py b/tensorflow_add_mask/python/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_add_mask/python/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_add_mask/python/__pycache__/__init__.cpython-36.pyc b/tensorflow_add_mask/python/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..fa2f4a705bdcd5ce372031faadbb62df1ebba665
+GIT binary patch
+literal 137
+zcmXr!<>k5}91+LJz`*brh~WSv-~hzMEI=ZKA(%mv(QhR~5l9$8{4&!o%Fi#+PcAJk
+z$<NizFVHVZ%`46?O3TSFkFQEC%8$=4EzvKiEXl~v(~pnO%*!l^kJl@xyv1RYo1ape
+MlWGStuNa6K09Jz`umAu6
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_add_mask/python/ops/__init__.py b/tensorflow_add_mask/python/ops/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_add_mask/python/ops/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_add_mask/python/ops/__pycache__/__init__.cpython-36.pyc b/tensorflow_add_mask/python/ops/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..65cdbe4b667958b167294d5bb29d34d9e027aa79
+GIT binary patch
+literal 141
+zcmXr!<>k5}91+LJz`*brh~WSv-~hzMEI=ZKA(%mv(QhR~5l9$8{Ib$7%Fi#+PcAJk
+z$<NizFVHVZ%`46?O3TSFkFQEC%8$=4EzvKiEXl~v)6Xv`){l?R%*!l^kJl@xyv1RY
+Qo1apelWGStvlxgO0PRL2H2?qr
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_add_mask/python/ops/__pycache__/zero_out_ops.cpython-36.pyc b/tensorflow_add_mask/python/ops/__pycache__/zero_out_ops.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd6843eca6759324944359080c7713217f76657c
+GIT binary patch
+literal 546
+zcmZXQv2NQi5QZsPmK8^i12j{!c=b?gXvZMP6J#j@6dZbxO{$Sg>4+oMz+Uq-d7n&L
+zGxZfR^{CX1fs){lkL2O*zxzC!O`kt}`~D>n;zb;-5%UcnCs~w`LPaVzQ4`BJ3Or&S
+z$<e?Gb0U+0$7bB5G95TIlO~f{By_qx(b;yYCXdl$Bv19}HkY}|zKZ3^{_@W0#a<Hv
+zc7B1@E$Vh*cm5vR)o(5?mQg=1*A7kRHPnqo^8A#k`d960Y?;q2)vbrBYd8MwB{x_q
+zF!h>B+Jyw99d@+Q5I!{R&*4xKxa7*=?Q+&n02FQj`YCWS-;oBOm@QBk2l0$Vf9ZAW
+zkSc=@tG_NQDjWTP^pnOR;^Y4j)|9?NYA6i>^T8b2gTMabhxTAge-9o(mA<TMqh)^V
+zu+I*+CqZYyO_0~?f)IVN>72*r6WZdv_P+*;H=70bSsaoKP1{|cT{WmWqp#<j&7HF(
+MaUSsw8YfJD0L1O3tN;K2
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_add_mask/python/ops/add_mask_ops.py b/tensorflow_add_mask/python/ops/add_mask_ops.py
+new file mode 100644
+index 0000000..92b527a
+--- /dev/null
++++ b/tensorflow_add_mask/python/ops/add_mask_ops.py
+@@ -0,0 +1,26 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Use add_mask ops in python."""
++
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++from tensorflow.python.framework import load_library
++from tensorflow.python.platform import resource_loader
++
++add_mask_ops = load_library.load_op_library(
++    resource_loader.get_path_to_datafile('_add_mask_ops.so'))
++add_mask = add_mask_ops.add_mask
+diff --git a/tensorflow_add_mask/python/ops/add_mask_ops_test.py b/tensorflow_add_mask/python/ops/add_mask_ops_test.py
+new file mode 100644
+index 0000000..38801b6
+--- /dev/null
++++ b/tensorflow_add_mask/python/ops/add_mask_ops_test.py
+@@ -0,0 +1,38 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Tests for add_mask ops."""
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++import numpy as np
++
++from tensorflow.python.platform import test
++try:
++  from tensorflow_add_mask.python.ops.add_mask_ops import add_mask
++except ImportError:
++  from add_mask_ops import add_mask
++
++
++class AddMaskTest(test.TestCase):
++
++  def testAddMask(self):
++    with self.test_session():
++      self.assertAllClose(
++          add_mask([[1.0, 2.0], [3.0, 4.0]], [[4.0, 3.0],[2.0, 1.0]], 0.2), np.array([[1.8, 2.6], [3.4, 4.2]]))
++
++
++if __name__ == '__main__':
++  test.main()
+diff --git a/tensorflow_linear_transform/BUILD b/tensorflow_linear_transform/BUILD
+new file mode 100644
+index 0000000..7389104
+--- /dev/null
++++ b/tensorflow_linear_transform/BUILD
+@@ -0,0 +1,65 @@
++licenses(["notice"])  # Apache 2.0
++
++package(default_visibility = ["//visibility:public"])
++
++config_setting(
++    name = "windows",
++    constraint_values = ["@bazel_tools//platforms:windows"],
++)
++
++cc_binary(
++    name = 'python/ops/_linear_transform_ops.so',
++    srcs = [
++        "cc/kernels/linear_transform_kernels.cc",
++        "cc/ops/linear_transform_ops.cc",
++    ],
++    linkshared = 1,
++    deps = [
++        "@local_config_tf//:libtensorflow_framework",
++        "@local_config_tf//:tf_header_lib",
++    ],
++    features = select({
++        ":windows": ["windows_export_all_symbols"],
++        "//conditions:default": [],
++    }),
++    copts = select({
++        ":windows": ["/DEIGEN_STRONG_INLINE=inline", "-DTENSORFLOW_MONOLITHIC_BUILD", "/DPLATFORM_WINDOWS", "/DEIGEN_HAS_C99_MATH", "/DTENSORFLOW_USE_EIGEN_THREADPOOL", "/DEIGEN_AVOID_STL_ARRAY", "/Iexternal/gemmlowp", "/wd4018", "/wd4577", "/DNOGDI", "/UTF_COMPILE_LIBRARY"],
++        "//conditions:default": ["-pthread", "-std=c++11", "-D_GLIBCXX_USE_CXX11_ABI=0"],
++    }),
++)
++
++py_library(
++    name = "linear_transform_ops_py",
++    srcs = ([
++        "python/ops/linear_transform_ops.py",
++    ]),
++    data = [
++        ":python/ops/_linear_transform_ops.so"
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_test(
++    name = "linear_transform_ops_py_test",
++    srcs = [
++        "python/ops/linear_transform_ops_test.py"
++    ],
++    main = "python/ops/linear_transform_ops_test.py",
++    deps = [
++        ":linear_transform_ops_py",
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_library(
++    name = "linear_transform_py",
++    srcs = ([
++        "__init__.py",
++        "python/__init__.py",
++        "python/ops/__init__.py",
++    ]),
++    deps = [
++        ":linear_transform_ops_py"
++    ],
++    srcs_version = "PY2AND3",
++)
+diff --git a/tensorflow_linear_transform/__init__.py b/tensorflow_linear_transform/__init__.py
+new file mode 100644
+index 0000000..d278b46
+--- /dev/null
++++ b/tensorflow_linear_transform/__init__.py
+@@ -0,0 +1,19 @@
++# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ==============================================================================
++"""TensorFlow custom op example."""
++
++from __future__ import absolute_import
++
++from tensorflow_linear_transform.python.ops.linear_transform_ops import linear_transform 
+diff --git a/tensorflow_linear_transform/__pycache__/__init__.cpython-36.pyc b/tensorflow_linear_transform/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e45b3b3d3de727881027b5bc38ad7843417f59b0
+GIT binary patch
+literal 302
+zcmZvXu}%Xq42E;L6soFK2WF&OPl(IFS^*Oy3k>K6tkR_7q~shWj#~Ogybsf@OuPaU
+zZc!x$Ecy3uOa5eE&1RF2v!~~qQixCSCnWn@&Q!4&(F#)-=?X7fS?qo3O0QbQUOk9<
+zv^#&aeZqL>a8s>vBJ>r8%5IlFINN+NMAXGFU%n)CnJjcZU?d)mcQztmru%v{oB|kJ
+z0Sps>b*3CGK-{0wUeJNRW<DG@n(#)i*f$tbbDRM;k)ILoBA#$L$hX!Jk@W9jml*Uv
+aG!4-89RV<Q7%x1U?CkZN8A-7yIh8*YfLJ#G
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_linear_transform/cc/kernels/linear_transform_kernels.cc b/tensorflow_linear_transform/cc/kernels/linear_transform_kernels.cc
+new file mode 100644
+index 0000000..1b55212
+--- /dev/null
++++ b/tensorflow_linear_transform/cc/kernels/linear_transform_kernels.cc
+@@ -0,0 +1,95 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op_kernel.h"
++#include "tensorflow/core/framework/register_types.h"
++#include "tensorflow/core/framework/tensor_shape.h"
++
++using namespace tensorflow;
++
++template <typename T>
++class LinearTransformOp : public OpKernel {
++ public:
++  explicit LinearTransformOp(OpKernelConstruction* context) : OpKernel(context) {}
++
++  void Compute(OpKernelContext* context) override {
++    // Grab the input tensor
++    const Tensor& input_tensor = context->input(0);
++
++    // Grab the weights tensor
++    const Tensor& weights_tensor = context->input(1);
++
++    // Grab the random scalar tensor
++    const Tensor& rscalar_tensor = context->input(2);
++
++    // check shapes of input, weights and rscalar
++    const TensorShape& input_shape = input_tensor.shape();
++    const TensorShape& weights_shape = weights_tensor.shape();
++    const TensorShape& rscalar_shape = rscalar_tensor.shape();
++    
++    // check input is "NHWC" 
++    DCHECK_EQ(input_shape.dims(),4);
++	// check rscalar is [r1, ..., rn]
++    DCHECK_EQ(rscalar_shape.dims(), 1);
++	// check weights is [[w11, ..., w1n],[w21,...,w2n]]
++    DCHECK_EQ(weights_shape.dims(), 2);
++    DCHECK_EQ(weights_shape.dim_size(1), rscalar_shape.dim_size(0));
++    
++   // create output shape
++    TensorShape output_shape;
++    output_shape.AddDim(input_shape.dim_size(0));
++    output_shape.AddDim(input_shape.dim_size(1));
++    output_shape.AddDim(input_shape.dim_size(2));
++    output_shape.AddDim(weights_shape.dim_size(1));
++
++
++    // Create an output tensor
++    Tensor* output_tensor = NULL;
++    OP_REQUIRES_OK(context, context->allocate_output(0, output_shape,
++                                                     &output_tensor));
++
++    // get the corresponding Eigen tensors for data access
++    auto input= input_tensor.tensor<T, 4>();
++    auto weights= weights_tensor.tensor<int32, 2>();
++    auto rscalar = rscalar_tensor.tensor<T,1>();
++    auto output = output_tensor->tensor<T, 4>();
++
++	int idx_from, idx_rand;
++	T scalar;
++    for (int i = 0; i < output_tensor->shape().dim_size(0); i++) {
++      for (int j = 0; j < output_tensor->shape().dim_size(1); j++) {
++      	for (int k = 0; k < output_tensor->shape().dim_size(2); k++) {
++      	  for (int n = 0; n < output_tensor->shape().dim_size(3); n++) {
++            idx_from = weights(0,n);
++            idx_rand = weights(1,n);
++            scalar = rscalar(n);
++
++        	output(i,j,k,n) = 
++               input(i, j, k, idx_from) * scalar + input(i,j,k,idx_rand);
++		  }
++		}
++      }
++    }
++
++  }
++};
++
++#define REGISTER_KERNEL(type)                                       \
++  REGISTER_KERNEL_BUILDER(                                          \
++      Name("LinearTransform").Device(DEVICE_CPU).TypeConstraint<type>("T"), \
++      LinearTransformOp<type>)
++
++TF_CALL_REAL_NUMBER_TYPES(REGISTER_KERNEL);
++#undef REGISTER_KERNEL
+diff --git a/tensorflow_linear_transform/cc/ops/linear_transform_ops.cc b/tensorflow_linear_transform/cc/ops/linear_transform_ops.cc
+new file mode 100644
+index 0000000..a335945
+--- /dev/null
++++ b/tensorflow_linear_transform/cc/ops/linear_transform_ops.cc
+@@ -0,0 +1,58 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op.h"
++#include "tensorflow/core/framework/register_types.h"
++#include "tensorflow/core/framework/shape_inference.h"
++
++using namespace tensorflow;
++
++REGISTER_OP("LinearTransform")
++    .Attr("T: realnumbertype")
++    .Input("input: T")
++    .Input("weights: int32")
++    .Input("scalar: T")
++    .Output("transformed: T")
++    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
++      shape_inference::ShapeHandle input_shape;
++      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 4, &input_shape));
++
++      shape_inference::ShapeHandle weight_shape;
++      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 2, &weight_shape));
++
++      shape_inference::ShapeHandle scalar_shape;
++      TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 1, &scalar_shape));
++                
++      // Get number of weight channel
++      shape_inference::DimensionHandle weight_channel_dim = c->Dim(weight_shape, 1);
++
++	  // assuming data format NHWC
++	  int channel_dim_index = 3;
++      shape_inference::ShapeHandle output_shape;
++      TF_RETURN_IF_ERROR(c->ReplaceDim(input_shape, channel_dim_index, weight_channel_dim, &output_shape));
++
++      c->set_output(0, output_shape);
++
++      return Status::OK();
++    })
++    .Doc(R"doc(
++Apply linear transform on input tensor with weights and scalar.
++Assume weights has two dimension, recording from_idx and rand_idx in
++input Tensor. The output will be computed with the following formula:
++
++output[h][w][c] = input[h][w][from_idx]*scalar[c] + input[h][w][rand_idx]. 
++
++transformed: The transformed output Tensor. 
++)doc");
+diff --git a/tensorflow_linear_transform/python/__init__.py b/tensorflow_linear_transform/python/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_linear_transform/python/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_linear_transform/python/__pycache__/__init__.cpython-36.pyc b/tensorflow_linear_transform/python/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..fa2f4a705bdcd5ce372031faadbb62df1ebba665
+GIT binary patch
+literal 137
+zcmXr!<>k5}91+LJz`*brh~WSv-~hzMEI=ZKA(%mv(QhR~5l9$8{4&!o%Fi#+PcAJk
+z$<NizFVHVZ%`46?O3TSFkFQEC%8$=4EzvKiEXl~v(~pnO%*!l^kJl@xyv1RYo1ape
+MlWGStuNa6K09Jz`umAu6
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_linear_transform/python/ops/__init__.py b/tensorflow_linear_transform/python/ops/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_linear_transform/python/ops/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_linear_transform/python/ops/__pycache__/__init__.cpython-36.pyc b/tensorflow_linear_transform/python/ops/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..65cdbe4b667958b167294d5bb29d34d9e027aa79
+GIT binary patch
+literal 141
+zcmXr!<>k5}91+LJz`*brh~WSv-~hzMEI=ZKA(%mv(QhR~5l9$8{Ib$7%Fi#+PcAJk
+z$<NizFVHVZ%`46?O3TSFkFQEC%8$=4EzvKiEXl~v)6Xv`){l?R%*!l^kJl@xyv1RY
+Qo1apelWGStvlxgO0PRL2H2?qr
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_linear_transform/python/ops/__pycache__/zero_out_ops.cpython-36.pyc b/tensorflow_linear_transform/python/ops/__pycache__/zero_out_ops.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd6843eca6759324944359080c7713217f76657c
+GIT binary patch
+literal 546
+zcmZXQv2NQi5QZsPmK8^i12j{!c=b?gXvZMP6J#j@6dZbxO{$Sg>4+oMz+Uq-d7n&L
+zGxZfR^{CX1fs){lkL2O*zxzC!O`kt}`~D>n;zb;-5%UcnCs~w`LPaVzQ4`BJ3Or&S
+z$<e?Gb0U+0$7bB5G95TIlO~f{By_qx(b;yYCXdl$Bv19}HkY}|zKZ3^{_@W0#a<Hv
+zc7B1@E$Vh*cm5vR)o(5?mQg=1*A7kRHPnqo^8A#k`d960Y?;q2)vbrBYd8MwB{x_q
+zF!h>B+Jyw99d@+Q5I!{R&*4xKxa7*=?Q+&n02FQj`YCWS-;oBOm@QBk2l0$Vf9ZAW
+zkSc=@tG_NQDjWTP^pnOR;^Y4j)|9?NYA6i>^T8b2gTMabhxTAge-9o(mA<TMqh)^V
+zu+I*+CqZYyO_0~?f)IVN>72*r6WZdv_P+*;H=70bSsaoKP1{|cT{WmWqp#<j&7HF(
+MaUSsw8YfJD0L1O3tN;K2
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_linear_transform/python/ops/linear_transform_ops.py b/tensorflow_linear_transform/python/ops/linear_transform_ops.py
+new file mode 100644
+index 0000000..6125767
+--- /dev/null
++++ b/tensorflow_linear_transform/python/ops/linear_transform_ops.py
+@@ -0,0 +1,26 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Use linear_transform ops in python."""
++
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++from tensorflow.python.framework import load_library
++from tensorflow.python.platform import resource_loader
++
++linear_transform_ops = load_library.load_op_library(
++    resource_loader.get_path_to_datafile('_linear_transform_ops.so'))
++linear_transform = linear_transform_ops.linear_transform
+diff --git a/tensorflow_linear_transform/python/ops/linear_transform_ops_test.py b/tensorflow_linear_transform/python/ops/linear_transform_ops_test.py
+new file mode 100644
+index 0000000..144255a
+--- /dev/null
++++ b/tensorflow_linear_transform/python/ops/linear_transform_ops_test.py
+@@ -0,0 +1,50 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Tests for linear_transform ops."""
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++import numpy as np
++
++from tensorflow.python.platform import test
++try:
++  from tensorflow_linear_transform.python.ops.linear_transform_ops import linear_transform
++except ImportError:
++  from linear_transform_ops import linear_transform
++
++
++class LinearTransformTest(test.TestCase):
++
++  def testLinearTransform(self):
++    with self.test_session():
++      self.assertAllClose(
++          linear_transform(
++              [[[[1.0, 2.0, 3.0], 
++                 [3.0, 4.0, 5.0]], 
++                [[4.0, 3.0, 2.0],
++                 [2.0, 1.0, 1.0]]]],
++                [[1, 0],
++                 [2, 2]],
++                [0.1, 0.1]),
++                np.array(
++                [[[[3.2, 3.1], 
++                 [5.4, 5.3]], 
++                [[2.3, 2.4],
++                 [1.1, 1.2]]]]))
++
++
++if __name__ == '__main__':
++  test.main()
+diff --git a/tensorflow_shuffle_channel/BUILD b/tensorflow_shuffle_channel/BUILD
+new file mode 100644
+index 0000000..5411284
+--- /dev/null
++++ b/tensorflow_shuffle_channel/BUILD
+@@ -0,0 +1,65 @@
++licenses(["notice"])  # Apache 2.0
++
++package(default_visibility = ["//visibility:public"])
++
++config_setting(
++    name = "windows",
++    constraint_values = ["@bazel_tools//platforms:windows"],
++)
++
++cc_binary(
++    name = 'python/ops/_shuffle_channel_ops.so',
++    srcs = [
++        "cc/kernels/shuffle_channel_kernels.cc",
++        "cc/ops/shuffle_channel_ops.cc",
++    ],
++    linkshared = 1,
++    deps = [
++        "@local_config_tf//:libtensorflow_framework",
++        "@local_config_tf//:tf_header_lib",
++    ],
++    features = select({
++        ":windows": ["windows_export_all_symbols"],
++        "//conditions:default": [],
++    }),
++    copts = select({
++        ":windows": ["/DEIGEN_STRONG_INLINE=inline", "-DTENSORFLOW_MONOLITHIC_BUILD", "/DPLATFORM_WINDOWS", "/DEIGEN_HAS_C99_MATH", "/DTENSORFLOW_USE_EIGEN_THREADPOOL", "/DEIGEN_AVOID_STL_ARRAY", "/Iexternal/gemmlowp", "/wd4018", "/wd4577", "/DNOGDI", "/UTF_COMPILE_LIBRARY"],
++        "//conditions:default": ["-pthread", "-std=c++11", "-D_GLIBCXX_USE_CXX11_ABI=0"],
++    }),
++)
++
++py_library(
++    name = "shuffle_channel_ops_py",
++    srcs = ([
++        "python/ops/shuffle_channel_ops.py",
++    ]),
++    data = [
++        ":python/ops/_shuffle_channel_ops.so"
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_test(
++    name = "shuffle_channel_ops_py_test",
++    srcs = [
++        "python/ops/shuffle_channel_ops_test.py"
++    ],
++    main = "python/ops/shuffle_channel_ops_test.py",
++    deps = [
++        ":shuffle_channel_ops_py",
++    ],
++    srcs_version = "PY2AND3",
++)
++
++py_library(
++    name = "shuffle_channel_py",
++    srcs = ([
++        "__init__.py",
++        "python/__init__.py",
++        "python/ops/__init__.py",
++    ]),
++    deps = [
++        ":shuffle_channel_ops_py"
++    ],
++    srcs_version = "PY2AND3",
++)
+diff --git a/tensorflow_shuffle_channel/__init__.py b/tensorflow_shuffle_channel/__init__.py
+new file mode 100644
+index 0000000..af63134
+--- /dev/null
++++ b/tensorflow_shuffle_channel/__init__.py
+@@ -0,0 +1,19 @@
++# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ==============================================================================
++"""TensorFlow custom op example."""
++
++from __future__ import absolute_import
++
++from tensorflow_shuffle_channel.python.ops.shuffle_channel_ops import shuffle_channel 
+diff --git a/tensorflow_shuffle_channel/__pycache__/__init__.cpython-36.pyc b/tensorflow_shuffle_channel/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e45b3b3d3de727881027b5bc38ad7843417f59b0
+GIT binary patch
+literal 302
+zcmZvXu}%Xq42E;L6soFK2WF&OPl(IFS^*Oy3k>K6tkR_7q~shWj#~Ogybsf@OuPaU
+zZc!x$Ecy3uOa5eE&1RF2v!~~qQixCSCnWn@&Q!4&(F#)-=?X7fS?qo3O0QbQUOk9<
+zv^#&aeZqL>a8s>vBJ>r8%5IlFINN+NMAXGFU%n)CnJjcZU?d)mcQztmru%v{oB|kJ
+z0Sps>b*3CGK-{0wUeJNRW<DG@n(#)i*f$tbbDRM;k)ILoBA#$L$hX!Jk@W9jml*Uv
+aG!4-89RV<Q7%x1U?CkZN8A-7yIh8*YfLJ#G
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_shuffle_channel/cc/kernels/shuffle_channel_kernels.cc b/tensorflow_shuffle_channel/cc/kernels/shuffle_channel_kernels.cc
+new file mode 100644
+index 0000000..9a9c2db
+--- /dev/null
++++ b/tensorflow_shuffle_channel/cc/kernels/shuffle_channel_kernels.cc
+@@ -0,0 +1,85 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op_kernel.h"
++#include "tensorflow/core/framework/register_types.h"
++
++using namespace tensorflow;
++
++template <typename T>
++class ShuffleChannelOp : public OpKernel {
++ public:
++  explicit ShuffleChannelOp(OpKernelConstruction* context) : OpKernel(context) {}
++
++  void Compute(OpKernelContext* context) override {
++    // Grab the input tensor
++    const Tensor& input = context->input(0);
++
++    // Grab the weights tensor
++    const Tensor& weights = context->input(1);
++
++    // Grab the random scalar tensor
++    const Tensor& rscalar = context->input(2);
++
++    // check shapes of input, weights and rscalar
++    const TensorShape& input_shape = input.shape();
++    const TensorShape& weights_shape = weights.shape();
++    const TensorShape& rscalar_shape = rscalar.shape();
++    
++    // Assume input is "NHWC"
++    DCHECK_EQ(input_shape.dims(), 4);
++    DCHECK_EQ(weights_shape.dims(), 1);
++    DCHECK_EQ(rscalar_shape.dims(), 1);
++
++    // input channels equals weights and scalar channels
++    DCHECK_EQ(input_shape.dim_size(3), weights_shape.dim_size(0));
++    DCHECK_EQ(weights_shape.dim_size(0), weights_shape.dim_size(0));
++
++    // Create an output tensor
++    Tensor* output= NULL;
++    OP_REQUIRES_OK(context, context->allocate_output(0, input.shape(), &output));
++
++    // get the corresponding Eigen tensors for data access
++    auto input_tensor = input.template tensor<T, 4>();
++    auto weights_tensor = weights.flat<int32>();
++    auto rscalar_tensor = rscalar.template flat<T>();
++    auto output_tensor = output->template tensor<T, 4>();
++
++    // all input element with mask tensor element.
++    int idx_from;
++    T scalar;
++    for (int i = 0; i < output->shape().dim_size(0); i++) {
++      for (int j = 0; j < output->shape().dim_size(1); j++) {
++        for (int k = 0; k < output->shape().dim_size(2); k++) {
++          for (int c = 0; c < output->shape().dim_size(3); c++) {
++            idx_from = weights_tensor(c);
++            scalar = rscalar_tensor(c); 
++            output_tensor(i,j,k,c) = input_tensor(i,j,k,idx_from) * scalar;
++          }
++        }
++      }
++    }
++
++  }
++};
++
++#define REGISTER_KERNEL(type)                                       \
++  REGISTER_KERNEL_BUILDER(                                          \
++      Name("ShuffleChannel").Device(DEVICE_CPU).TypeConstraint<type>("T"), \
++      ShuffleChannelOp<type>)
++
++TF_CALL_REAL_NUMBER_TYPES(REGISTER_KERNEL);
++
++#undef REGISTER_KERNEL
+diff --git a/tensorflow_shuffle_channel/cc/ops/shuffle_channel_ops.cc b/tensorflow_shuffle_channel/cc/ops/shuffle_channel_ops.cc
+new file mode 100644
+index 0000000..78c16ca
+--- /dev/null
++++ b/tensorflow_shuffle_channel/cc/ops/shuffle_channel_ops.cc
+@@ -0,0 +1,37 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/core/framework/op.h"
++#include "tensorflow/core/framework/register_types.h"
++#include "tensorflow/core/framework/shape_inference.h"
++
++using namespace tensorflow;
++
++REGISTER_OP("ShuffleChannel")
++    .Attr("T: realnumbertype")
++    .Input("input: T")
++    .Input("weights: int32")
++    .Input("rscalar: T")
++    .Output("shuffled: T")
++    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
++      c->set_output(0, c->input(0));
++      return Status::OK();
++    })
++    .Doc(R"doc(
++Shuffle and possibly scale the input's channels.
++
++shuffled: A Tensor whose channels are shuffled and scaled with `weights`
++  and `rscalar`.
++)doc");
+diff --git a/tensorflow_shuffle_channel/python/__init__.py b/tensorflow_shuffle_channel/python/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_shuffle_channel/python/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_shuffle_channel/python/__pycache__/__init__.cpython-36.pyc b/tensorflow_shuffle_channel/python/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..fa2f4a705bdcd5ce372031faadbb62df1ebba665
+GIT binary patch
+literal 137
+zcmXr!<>k5}91+LJz`*brh~WSv-~hzMEI=ZKA(%mv(QhR~5l9$8{4&!o%Fi#+PcAJk
+z$<NizFVHVZ%`46?O3TSFkFQEC%8$=4EzvKiEXl~v(~pnO%*!l^kJl@xyv1RYo1ape
+MlWGStuNa6K09Jz`umAu6
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_shuffle_channel/python/ops/__init__.py b/tensorflow_shuffle_channel/python/ops/__init__.py
+new file mode 100644
+index 0000000..8b13789
+--- /dev/null
++++ b/tensorflow_shuffle_channel/python/ops/__init__.py
+@@ -0,0 +1 @@
++
+diff --git a/tensorflow_shuffle_channel/python/ops/__pycache__/__init__.cpython-36.pyc b/tensorflow_shuffle_channel/python/ops/__pycache__/__init__.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..65cdbe4b667958b167294d5bb29d34d9e027aa79
+GIT binary patch
+literal 141
+zcmXr!<>k5}91+LJz`*brh~WSv-~hzMEI=ZKA(%mv(QhR~5l9$8{Ib$7%Fi#+PcAJk
+z$<NizFVHVZ%`46?O3TSFkFQEC%8$=4EzvKiEXl~v)6Xv`){l?R%*!l^kJl@xyv1RY
+Qo1apelWGStvlxgO0PRL2H2?qr
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_shuffle_channel/python/ops/__pycache__/zero_out_ops.cpython-36.pyc b/tensorflow_shuffle_channel/python/ops/__pycache__/zero_out_ops.cpython-36.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd6843eca6759324944359080c7713217f76657c
+GIT binary patch
+literal 546
+zcmZXQv2NQi5QZsPmK8^i12j{!c=b?gXvZMP6J#j@6dZbxO{$Sg>4+oMz+Uq-d7n&L
+zGxZfR^{CX1fs){lkL2O*zxzC!O`kt}`~D>n;zb;-5%UcnCs~w`LPaVzQ4`BJ3Or&S
+z$<e?Gb0U+0$7bB5G95TIlO~f{By_qx(b;yYCXdl$Bv19}HkY}|zKZ3^{_@W0#a<Hv
+zc7B1@E$Vh*cm5vR)o(5?mQg=1*A7kRHPnqo^8A#k`d960Y?;q2)vbrBYd8MwB{x_q
+zF!h>B+Jyw99d@+Q5I!{R&*4xKxa7*=?Q+&n02FQj`YCWS-;oBOm@QBk2l0$Vf9ZAW
+zkSc=@tG_NQDjWTP^pnOR;^Y4j)|9?NYA6i>^T8b2gTMabhxTAge-9o(mA<TMqh)^V
+zu+I*+CqZYyO_0~?f)IVN>72*r6WZdv_P+*;H=70bSsaoKP1{|cT{WmWqp#<j&7HF(
+MaUSsw8YfJD0L1O3tN;K2
+
+literal 0
+HcmV?d00001
+
+diff --git a/tensorflow_shuffle_channel/python/ops/shuffle_channel_ops.py b/tensorflow_shuffle_channel/python/ops/shuffle_channel_ops.py
+new file mode 100644
+index 0000000..dfe76d2
+--- /dev/null
++++ b/tensorflow_shuffle_channel/python/ops/shuffle_channel_ops.py
+@@ -0,0 +1,26 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Use shuffle_channel ops in python."""
++
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++from tensorflow.python.framework import load_library
++from tensorflow.python.platform import resource_loader
++
++shuffle_channel_ops = load_library.load_op_library(
++    resource_loader.get_path_to_datafile('_shuffle_channel_ops.so'))
++shuffle_channel = shuffle_channel_ops.shuffle_channel
+diff --git a/tensorflow_shuffle_channel/python/ops/shuffle_channel_ops_test.py b/tensorflow_shuffle_channel/python/ops/shuffle_channel_ops_test.py
+new file mode 100644
+index 0000000..22ce17a
+--- /dev/null
++++ b/tensorflow_shuffle_channel/python/ops/shuffle_channel_ops_test.py
+@@ -0,0 +1,48 @@
++# Copyright 2018 The Sonnet Authors. All Rights Reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ============================================================================
++"""Tests for shuffle_channel ops."""
++from __future__ import absolute_import
++from __future__ import division
++from __future__ import print_function
++
++import numpy as np
++
++from tensorflow.python.platform import test
++try:
++  from tensorflow_shuffle_channel.python.ops.shuffle_channel_ops import shuffle_channel
++except ImportError:
++  from shuffle_channel_ops import shuffle_channel
++
++
++class ShuffleChannelTest(test.TestCase):
++
++  def testShuffleChannel(self):
++    with self.test_session():
++      self.assertAllClose(
++          shuffle_channel(
++              [[[[1., 2., 3.], 
++                 [3., 4., 5.]], 
++                [[4., 3., 2.],
++                 [2., 1., 1.]]]],
++                [2, 0, 1],
++                [.1, .1, .1]),
++                np.array(
++              [[[[.3, .1, .2], 
++                 [.5, .3, .4]], 
++                [[.2, .4, .3],
++                 [.1, .2, .1]]]]))
++
++if __name__ == '__main__':
++  test.main()
+-- 
+2.7.4
+

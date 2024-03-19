@@ -1,0 +1,4 @@
+/training_2/
+/__pycache__/
+*.h5
+*.swp

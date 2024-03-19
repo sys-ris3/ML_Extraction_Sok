@@ -1,0 +1,48 @@
+From 2da9377cdc05ff0606fe31db2b338a343da9e123 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+Date: Mon, 26 Apr 2021 11:44:05 -0400
+Subject: [PATCH] OpenPlatformPkg add build option for Hikey960 TZRAM size 64MB
+
+Signed-off-by: Zhichuang Sun <zhisun@cs.stonybrook.edu>
+---
+ Platforms/Hisilicon/HiKey960/HiKey960.dsc                      | 6 +++++-
+ Platforms/Hisilicon/HiKey960/Library/HiKey960Lib/HiKey960Mem.c | 6 +++++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/Platforms/Hisilicon/HiKey960/HiKey960.dsc b/Platforms/Hisilicon/HiKey960/HiKey960.dsc
+index 6d29dec..f5daf8a 100644
+--- a/Platforms/Hisilicon/HiKey960/HiKey960.dsc
++++ b/Platforms/Hisilicon/HiKey960/HiKey960.dsc
+@@ -167,7 +167,11 @@
+   ReportStatusCodeLib|IntelFrameworkModulePkg/Library/DxeReportStatusCodeLibFramework/DxeReportStatusCodeLib.inf
+ 
+ [BuildOptions]
+-  GCC:*_*_*_PLATFORM_FLAGS == -I$(WORKSPACE)/MdeModulePkg/Include -I$(WORKSPACE)/OpenPlatformPkg/Include -I$(WORKSPACE)/OpenPlatformPkg/Platforms/Hisilicon/HiKey960/Include -I$(WORKSPACE)/EmbeddedPkg/Include
++#!ifdef HIKEY960_TZRAM_64MB
++  GCC:*_*_*_PLATFORM_FLAGS == -I$(WORKSPACE)/MdeModulePkg/Include -I$(WORKSPACE)/OpenPlatformPkg/Include -I$(WORKSPACE)/OpenPlatformPkg/Platforms/Hisilicon/HiKey960/Include -I$(WORKSPACE)/EmbeddedPkg/Include -DHIKEY960_TZRAM_64MB
++#!else
++#  GCC:*_*_*_PLATFORM_FLAGS == -I$(WORKSPACE)/MdeModulePkg/Include -I$(WORKSPACE)/OpenPlatformPkg/Include -I$(WORKSPACE)/OpenPlatformPkg/Platforms/Hisilicon/HiKey960/Include -I$(WORKSPACE)/EmbeddedPkg/Include
++#!endif
+ 
+ [BuildOptions.common.EDKII.DXE_RUNTIME_DRIVER]
+   GCC:*_*_ARM_DLINK_FLAGS = -z common-page-size=0x1000
+diff --git a/Platforms/Hisilicon/HiKey960/Library/HiKey960Lib/HiKey960Mem.c b/Platforms/Hisilicon/HiKey960/Library/HiKey960Lib/HiKey960Mem.c
+index 2d0568b..81fad7f 100644
+--- a/Platforms/Hisilicon/HiKey960/Library/HiKey960Lib/HiKey960Mem.c
++++ b/Platforms/Hisilicon/HiKey960/Library/HiKey960Lib/HiKey960Mem.c
+@@ -50,7 +50,11 @@ STATIC struct HiKey960ReservedMemory {
+   { 0x1AC00000, 0x00098000 },    // ARM-TF reserved
+   { 0x32000000, 0x00100000 },    // PSTORE/RAMOOPS
+   { 0x32100000, 0x00001000 },    // ADB REBOOT "REASON"
+-  { 0x3E000000, 0x02000000 },    // TEE OS
++#ifdef HIKEY960_TZRAM_64MB
++  { 0x3B000000, 0x05000000 },    // TEE OS
++#else
++  { 0x3E000000, 0x02000000 },    // TEE OS
++#endif /* HIKEY960_TZRAM_64MB */
+   { 0x89B80000, 0x00100000 },    // MCU Code reserved
+   { 0x89C80000, 0x00040000 }     // MCU reserved
+ };
+-- 
+2.7.4
+

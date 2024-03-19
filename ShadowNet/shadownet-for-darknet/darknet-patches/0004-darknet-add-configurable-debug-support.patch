@@ -1,0 +1,42 @@
+From 3adbeed77c102455b487b65c56113365733c9ebd Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Thu, 14 May 2020 15:14:18 +0000
+Subject: [PATCH 4/9] darknet:add configurable debug support
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ src/utils.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/src/utils.h b/src/utils.h
+index e0c6a4f..2a03dbe 100644
+--- a/src/utils.h
++++ b/src/utils.h
+@@ -5,6 +5,9 @@
+ #include "darknet.h"
+ #include "list.h"
+ 
++//#define DEBUG_WEIGHTS
++
++#ifdef DEBUG_WEIGHTS
+ /* dump weigths first 8 bytes */
+ #define DUMPW4F(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %6f %6f %6f %6f\n",size, \
+         pw[0], \
+@@ -34,6 +37,14 @@
+         ((unsigned char *)pw)[1], \
+         ((unsigned char *)pw)[2], \
+         ((unsigned char *)pw)[3]) 
++#else
++
++#define DUMPW4F(TAG, size, pw) 
++#define DUMPW4I(TAG, size, pw) 
++#define DUMPW8(TAG, size, pw)
++#define DUMPW4(TAG, size, pw)
++
++#endif
+ 
+ #define TIME(a) \
+     do { \
+-- 
+2.7.4
+

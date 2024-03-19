@@ -1,0 +1,245 @@
+From 23b76bf0739ae171a60b9e541a22d8e9984d3dad Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Tue, 12 May 2020 01:27:40 +0000
+Subject: [PATCH 3/3] add debug support for tflite kernel
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ tensorflow/lite/kernels/BUILD               | 24 ++++++++++++++++++++++-
+ tensorflow/lite/kernels/add_mask.cc         | 12 ++++++++++++
+ tensorflow/lite/kernels/custom_op_debug.h   | 30 +++++++++++++++++++++++++++++
+ tensorflow/lite/kernels/linear_transform.cc | 18 +++++++++++------
+ tensorflow/lite/kernels/shuffle_channel.cc  | 21 ++++++++++++++++++++
+ 5 files changed, 98 insertions(+), 7 deletions(-)
+ create mode 100644 tensorflow/lite/kernels/custom_op_debug.h
+
+diff --git a/tensorflow/lite/kernels/BUILD b/tensorflow/lite/kernels/BUILD
+index eec97a8..b784b09 100644
+--- a/tensorflow/lite/kernels/BUILD
++++ b/tensorflow/lite/kernels/BUILD
+@@ -10,6 +10,27 @@ package(
+     licenses = ["notice"],  # Apache 2.0
+ )
+ 
++# Enable tflite_tee_delegate
++config_setting(
++    name = "tflite_with_tee_delegate",
++    define_values = {"tflite_with_tee": "true"},
++)
++
++cc_library(
++    name = "tflite_with_tee",
++    deps = select({
++        ":tflite_with_tee_delegate": [":tflite_with_tee_enabled"],
++        "//conditions:default": [],
++    }),
++)
++
++cc_library(
++    name = "tflite_with_tee_enabled",
++    defines = ["TFLITE_TEE_DELEGATE"],
++    visibility = ["//visibility:private"],
++    deps = ["//third_party/optee_delegate:tee_delegate"],
++)
++
+ # Enables usage of ruy in TFLite kernels.
+ # WARNING: This build flag is experimental and subject to change.
+ config_setting(
+@@ -517,6 +538,7 @@ cc_library(
+     ],
+     hdrs = [
+         "dequantize.h",
++        "custom_op_debug.h",
+     ],
+     copts = tflite_copts() + tf_opts_nortti_if_android() + EXTRA_EIGEN_COPTS,
+     visibility = ["//visibility:private"],
+@@ -529,6 +551,7 @@ cc_library(
+         ":lstm_shared",
+         ":op_macros",
+         ":padding",
++        ":tflite_with_tee",
+         "//tensorflow/lite:framework",
+         "//tensorflow/lite:minimal_logging",
+         "//tensorflow/lite:string_util",
+@@ -547,7 +570,6 @@ cc_library(
+         "//tensorflow/lite/kernels/internal:tensor_utils",
+         "//tensorflow/lite/kernels/internal:types",
+         "//third_party/eigen3",
+-        "//third_party/optee_delegate:tee_delegate",
+         "@com_google_absl//absl/memory",
+         "@com_google_absl//absl/strings",
+         "@farmhash_archive//:farmhash",
+diff --git a/tensorflow/lite/kernels/add_mask.cc b/tensorflow/lite/kernels/add_mask.cc
+index 8de77ac..8eb42c8 100644
+--- a/tensorflow/lite/kernels/add_mask.cc
++++ b/tensorflow/lite/kernels/add_mask.cc
+@@ -17,6 +17,7 @@ limitations under the License.
+ #include "tensorflow/lite/kernels/internal/tensor.h"
+ #include "tensorflow/lite/kernels/kernel_util.h"
+ #include "tensorflow/lite/kernels/op_macros.h"
++#include "tensorflow/lite/kernels/custom_op_debug.h"
+ 
+ namespace tflite {
+ namespace ops {
+@@ -71,6 +72,7 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+   const float* r_flat = GetTensorData<float>(input_r);
+   float* output_flat = GetTensorData<float>(output);
+ 
++
+   size_t count = 1;
+   int num_dims = NumDimensions(input_x);
+   for (int i = 1; i < num_dims; ++i) {
+@@ -78,12 +80,22 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+   }
+   size_t batches = input_x->dims->data[0];
+ 
++
+   for (size_t b = 0; b < batches; ++b) {
+     for (size_t i = 0; i < count; ++i) {
+       output_flat[i + (b*count)] = x_flat[i + (b*count)] + r_flat[0] * w_flat[i];
+     }
+   }
+ 
++  DUMPW8("add_mask input bytes:",count,x_flat);
++  DUMPW4F("add_mask input float:",count, x_flat);
++  DUMPW8("add_mask weight bytes:",count, w_flat);
++  DUMPW4F("add_mask weight float:",count, w_flat);
++  DUMPW4("add_mask rscalar bytes:", 1, r_flat);
++  DUMPW4F("add_mask rscalar float:", 1, r_flat);
++  DUMPW8("add_mask output bytes:",count, output_flat);
++  DUMPW4F("add_mask output float:",count, output_flat);
++
+   return kTfLiteOk;
+ }
+ 
+diff --git a/tensorflow/lite/kernels/custom_op_debug.h b/tensorflow/lite/kernels/custom_op_debug.h
+new file mode 100644
+index 0000000..a78e711
+--- /dev/null
++++ b/tensorflow/lite/kernels/custom_op_debug.h
+@@ -0,0 +1,30 @@
++#include <stdio.h>
++/* dump weigths first 8 bytes */
++#define DUMPW4F(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %6f %6f %6f %6f\n",size, \
++        pw[0], \
++        pw[1], \
++        pw[2], \
++        pw[3])
++
++#define DUMPW4I(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %6d %6d %6d %6d\n",size, \
++        pw[0], \
++        pw[1], \
++        pw[2], \
++        pw[3]) 
++
++/* dump weigths first 8 bytes */
++#define DUMPW8(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %3u %3u %3u %3u %3u %3u %3u %3u\n",size, \
++        ((unsigned char *)pw)[0], \
++        ((unsigned char *)pw)[1], \
++        ((unsigned char *)pw)[2], \
++        ((unsigned char *)pw)[3], \
++        ((unsigned char *)pw)[4], \
++        ((unsigned char *)pw)[5], \
++        ((unsigned char *)pw)[6], \
++        ((unsigned char *)pw)[7])
++
++#define DUMPW4(TAG, size, pw) fprintf(stderr, TAG " bufsize:%d [0-7]: %3u %3u %3u %3u\n",size, \
++        ((unsigned char *)pw)[0], \
++        ((unsigned char *)pw)[1], \
++        ((unsigned char *)pw)[2], \
++        ((unsigned char *)pw)[3]) 
+diff --git a/tensorflow/lite/kernels/linear_transform.cc b/tensorflow/lite/kernels/linear_transform.cc
+index 63a4b5c..d87cbf7 100644
+--- a/tensorflow/lite/kernels/linear_transform.cc
++++ b/tensorflow/lite/kernels/linear_transform.cc
+@@ -18,13 +18,13 @@ limitations under the License.
+ #include "tensorflow/lite/kernels/kernel_util.h"
+ #include "tensorflow/lite/kernels/op_macros.h"
+ #include "tensorflow/lite/minimal_logging.h"
++#include "tensorflow/lite/kernels/custom_op_debug.h"
+ 
++//#define TFLITE_TEE_DELEGATE
+ 
+-#define TEE_DELEGATE
+-
+-#ifdef TEE_DELEGATE
++#ifdef TFLITE_TEE_DELEGATE
+ #include "third_party/optee_delegate/tee_delegate.h"
+-#endif // TEE_DELEGATE
++#endif // TFLITE_TEE_DELEGATE
+ 
+ namespace tflite {
+ namespace ops {
+@@ -84,7 +84,7 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+   size_t M = input_x->dims->data[3];
+   size_t N = input_w->dims->data[1];
+ 
+-#ifdef TEE_DELEGATE
++#ifdef TFLITE_TEE_DELEGATE
+   uint32_t teec_res;
+   teeDelegateStatus status;
+   char *STATUS_CODE[] = {"Ok","Noinit","Fail"};
+@@ -95,6 +95,9 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+ 
+ #else
+ 
++  DUMPW8("linear_transform w_flat", (N*2),  w_flat);
++  DUMPW8("linear_transform r_flat", N,  r_flat);
++
+   int idx_from, idx_rand;
+   float scalar; 
+   for (size_t b = 0; b < B; ++b) {
+@@ -112,7 +115,10 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+       }
+     }
+   }
+-#endif // TEE_DELEGATE
++
++    DUMPW8("linear_transform output bytes:",H*W*N, output_flat);
++    DUMPW4F("linear_transform output float:",H*W*N, output_flat);
++#endif // TFLITE_TEE_DELEGATE
+ 
+   return kTfLiteOk;
+ }
+diff --git a/tensorflow/lite/kernels/shuffle_channel.cc b/tensorflow/lite/kernels/shuffle_channel.cc
+index 17b87da..c9b5368 100644
+--- a/tensorflow/lite/kernels/shuffle_channel.cc
++++ b/tensorflow/lite/kernels/shuffle_channel.cc
+@@ -17,6 +17,24 @@ limitations under the License.
+ #include "tensorflow/lite/kernels/internal/tensor.h"
+ #include "tensorflow/lite/kernels/kernel_util.h"
+ #include "tensorflow/lite/kernels/op_macros.h"
++#include <stdio.h>
++
++/* dump weigths first 8 bytes */
++#define DUMPW8(TAG, size, pw) printf(TAG " buf size:%d [0-7]: %3u %3u %3u %3u %3u %3u %3u %3u\n",size, \
++        ((unsigned char *)pw)[0], \
++        ((unsigned char *)pw)[1], \
++        ((unsigned char *)pw)[2], \
++        ((unsigned char *)pw)[3], \
++        ((unsigned char *)pw)[4], \
++        ((unsigned char *)pw)[5], \
++        ((unsigned char *)pw)[6], \
++        ((unsigned char *)pw)[7])
++
++#define DUMPW4(TAG, size, pw) printf(TAG " buf size:%d [0-4]: %3u %3u %3u %3u\n",size, \
++        ((unsigned char *)pw)[0], \
++        ((unsigned char *)pw)[1], \
++        ((unsigned char *)pw)[2], \
++        ((unsigned char *)pw)[3])
+ 
+ namespace tflite {
+ namespace ops {
+@@ -75,6 +93,9 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
+   size_t W = input_x->dims->data[2];
+   size_t N = input_x->dims->data[3];
+ 
++  DUMPW8("add_mask w_flat", N,  w_flat);
++  DUMPW8("add_mask r_flat", N,  r_flat);
++
+   int idx_from;
+   float scalar;
+ 
+-- 
+2.7.4
+

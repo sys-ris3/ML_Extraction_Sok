@@ -1,0 +1,433 @@
+From a9e3abde6f371061d6bc2750f127ca7c78ffbe49 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Mon, 27 Apr 2020 22:59:10 +0000
+Subject: [PATCH 1/2] add custom ops for tflite
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ tensorflow/lite/kernels/BUILD               |   3 +
+ tensorflow/lite/kernels/add_mask.cc         | 100 +++++++++++++++++++++++++
+ tensorflow/lite/kernels/linear_transform.cc | 110 ++++++++++++++++++++++++++++
+ tensorflow/lite/kernels/register.cc         |   6 ++
+ tensorflow/lite/kernels/register_ref.cc     |   6 ++
+ tensorflow/lite/kernels/shuffle_channel.cc  | 108 +++++++++++++++++++++++++++
+ 6 files changed, 333 insertions(+)
+ create mode 100644 tensorflow/lite/kernels/add_mask.cc
+ create mode 100644 tensorflow/lite/kernels/linear_transform.cc
+ create mode 100644 tensorflow/lite/kernels/shuffle_channel.cc
+
+diff --git a/tensorflow/lite/kernels/BUILD b/tensorflow/lite/kernels/BUILD
+index 4b72692..2b464c2 100644
+--- a/tensorflow/lite/kernels/BUILD
++++ b/tensorflow/lite/kernels/BUILD
+@@ -422,6 +422,7 @@ cc_library(
+     srcs = [
+         "activations.cc",
+         "add.cc",
++        "add_mask.cc",
+         "add_n.cc",
+         "arg_min_max.cc",
+         "audio_spectrogram.cc",
+@@ -456,6 +457,7 @@ cc_library(
+         "hashtable_lookup.cc",
+         "if.cc",
+         "l2norm.cc",
++        "linear_transform.cc",
+         "local_response_norm.cc",
+         "logical.cc",
+         "lsh_projection.cc",
+@@ -488,6 +490,7 @@ cc_library(
+         "segment_sum.cc",
+         "select.cc",
+         "shape.cc",
++        "shuffle_channel.cc",
+         "skip_gram.cc",
+         "slice.cc",
+         "space_to_batch_nd.cc",
+diff --git a/tensorflow/lite/kernels/add_mask.cc b/tensorflow/lite/kernels/add_mask.cc
+new file mode 100644
+index 0000000..8de77ac
+--- /dev/null
++++ b/tensorflow/lite/kernels/add_mask.cc
+@@ -0,0 +1,100 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "tensorflow/lite/kernels/internal/optimized/optimized_ops.h"
++#include "tensorflow/lite/kernels/internal/reference/reference_ops.h"
++#include "tensorflow/lite/kernels/internal/tensor.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/op_macros.h"
++
++namespace tflite {
++namespace ops {
++namespace custom {
++namespace add_mask {
++
++enum KernelType {
++  kReference,
++};
++
++constexpr int kInputTensorX = 0;
++constexpr int kInputTensorW = 1;
++constexpr int kInputTensorR = 2;
++constexpr int kOutputTensor = 0;
++
++TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
++  TF_LITE_ENSURE_EQ(context, NumInputs(node), 3);
++  TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
++
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_x), 4);
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_w), 3);
++  TF_LITE_ENSURE_EQ(context, NumElements(input_r), 1);
++
++  TF_LITE_ENSURE_EQ(context, output->type, kTfLiteFloat32);
++  TF_LITE_ENSURE_EQ(context, input_x->type, output->type);
++  TF_LITE_ENSURE_EQ(context, input_w->type, output->type);
++  TF_LITE_ENSURE_EQ(context, input_r->type, output->type);
++
++  TfLiteIntArray* output_size = TfLiteIntArrayCreate(4);
++  output_size->data[0] = input_x->dims->data[0];
++  output_size->data[1] = input_x->dims->data[1];
++  output_size->data[2] = input_x->dims->data[2];
++  output_size->data[3] = input_x->dims->data[3];
++
++  return context->ResizeTensor(context, output, output_size);
++}
++
++template <KernelType kernel_type>
++TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  const float* x_flat = GetTensorData<float>(input_x);
++  const float* w_flat = GetTensorData<float>(input_w);
++  const float* r_flat = GetTensorData<float>(input_r);
++  float* output_flat = GetTensorData<float>(output);
++
++  size_t count = 1;
++  int num_dims = NumDimensions(input_x);
++  for (int i = 1; i < num_dims; ++i) {
++    count *= input_x->dims->data[i];
++  }
++  size_t batches = input_x->dims->data[0];
++
++  for (size_t b = 0; b < batches; ++b) {
++    for (size_t i = 0; i < count; ++i) {
++      output_flat[i + (b*count)] = x_flat[i + (b*count)] + r_flat[0] * w_flat[i];
++    }
++  }
++
++  return kTfLiteOk;
++}
++
++}  // namespace add_mask 
++
++TfLiteRegistration* Register_ADD_MASK() {
++  static TfLiteRegistration r = {nullptr, nullptr, add_mask::Prepare,
++                                 add_mask::Eval<add_mask::kReference>};
++  return &r;
++}
++
++}  // namespace custom
++}  // namespace ops
++}  // namespace tflite
+diff --git a/tensorflow/lite/kernels/linear_transform.cc b/tensorflow/lite/kernels/linear_transform.cc
+new file mode 100644
+index 0000000..3c80d20
+--- /dev/null
++++ b/tensorflow/lite/kernels/linear_transform.cc
+@@ -0,0 +1,110 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "tensorflow/lite/kernels/internal/optimized/optimized_ops.h"
++#include "tensorflow/lite/kernels/internal/reference/reference_ops.h"
++#include "tensorflow/lite/kernels/internal/tensor.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/op_macros.h"
++
++namespace tflite {
++namespace ops {
++namespace custom {
++namespace linear_transform {
++
++enum KernelType {
++  kReference,
++};
++
++constexpr int kInputTensorX = 0;
++constexpr int kInputTensorW = 1;
++constexpr int kInputTensorR = 2;
++constexpr int kOutputTensor = 0;
++
++TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
++  TF_LITE_ENSURE_EQ(context, NumInputs(node), 3);
++  TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
++
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_x), 4);
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_w), 2);
++
++  TF_LITE_ENSURE_EQ(context, output->type, kTfLiteFloat32);
++  TF_LITE_ENSURE_EQ(context, input_x->type, output->type);
++  TF_LITE_ENSURE_EQ(context, input_w->type, kTfLiteInt32);
++  TF_LITE_ENSURE_EQ(context, input_r->type, output->type);
++
++  TfLiteIntArray* output_size = TfLiteIntArrayCreate(4);
++  output_size->data[0] = input_x->dims->data[0];
++  output_size->data[1] = input_x->dims->data[1];
++  output_size->data[2] = input_x->dims->data[2];
++  output_size->data[3] = input_w->dims->data[1];
++
++  return context->ResizeTensor(context, output, output_size);
++}
++
++template <KernelType kernel_type>
++TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  const float* x_flat = GetTensorData<float>(input_x);
++  const int* w_flat = GetTensorData<int>(input_w);
++  const float* r_flat = GetTensorData<float>(input_r);
++  float* output_flat = GetTensorData<float>(output);
++
++  size_t B = input_x->dims->data[0];
++  size_t H = input_x->dims->data[1];
++  size_t W = input_x->dims->data[2];
++  size_t M = input_x->dims->data[3];
++  size_t N = input_w->dims->data[1];
++
++  int idx_from, idx_rand;
++  float scalar; 
++  for (size_t b = 0; b < B; ++b) {
++    for (size_t h = 0; h < H; ++h) {
++      for (size_t w = 0; w < W; ++w) {
++        for (size_t n = 0; n < N; ++n) {
++          idx_from = w_flat[n];
++          idx_rand = w_flat[N + n];
++          scalar = r_flat[n];
++
++          output_flat[(b * H * W * N) + (h * W * N) + (w * N) + n] = 
++            x_flat[(b * H * W * M) + (h * W * M) + (w * M) + idx_from] * scalar +  
++              x_flat[(b * H * W * M) + (h * W * M) + (w * M) + idx_rand]; 
++        }
++      }
++    }
++  }
++
++  return kTfLiteOk;
++}
++
++}  // namespace linear_transform 
++
++TfLiteRegistration* Register_LINEAR_TRANSFORM() {
++  static TfLiteRegistration r = {nullptr, nullptr, linear_transform::Prepare,
++                                 linear_transform::Eval<linear_transform::kReference>};
++  return &r;
++}
++
++}  // namespace custom
++}  // namespace ops
++}  // namespace tflite
+diff --git a/tensorflow/lite/kernels/register.cc b/tensorflow/lite/kernels/register.cc
+index 5153437..f8a59b0 100644
+--- a/tensorflow/lite/kernels/register.cc
++++ b/tensorflow/lite/kernels/register.cc
+@@ -25,6 +25,9 @@ TfLiteRegistration* Register_NUMERIC_VERIFY();
+ TfLiteRegistration* Register_AUDIO_SPECTROGRAM();
+ TfLiteRegistration* Register_MFCC();
+ TfLiteRegistration* Register_DETECTION_POSTPROCESS();
++TfLiteRegistration* Register_ADD_MASK();
++TfLiteRegistration* Register_LINEAR_TRANSFORM();
++TfLiteRegistration* Register_SHUFFLE_CHANNEL();
+ 
+ }  // namespace custom
+ 
+@@ -292,6 +295,9 @@ BuiltinOpResolver::BuiltinOpResolver() {
+             tflite::ops::custom::Register_AUDIO_SPECTROGRAM());
+   AddCustom("TFLite_Detection_PostProcess",
+             tflite::ops::custom::Register_DETECTION_POSTPROCESS());
++  AddCustom("AddMask", tflite::ops::custom::Register_ADD_MASK());
++  AddCustom("LinearTransform", tflite::ops::custom::Register_LINEAR_TRANSFORM());
++  AddCustom("ShuffleChannel", tflite::ops::custom::Register_SHUFFLE_CHANNEL());
+ }
+ 
+ }  // namespace builtin
+diff --git a/tensorflow/lite/kernels/register_ref.cc b/tensorflow/lite/kernels/register_ref.cc
+index 2381e8f..14019c2 100644
+--- a/tensorflow/lite/kernels/register_ref.cc
++++ b/tensorflow/lite/kernels/register_ref.cc
+@@ -24,6 +24,9 @@ namespace custom {
+ TfLiteRegistration* Register_AUDIO_SPECTROGRAM();
+ TfLiteRegistration* Register_MFCC();
+ TfLiteRegistration* Register_DETECTION_POSTPROCESS();
++TfLiteRegistration* Register_ADD_MASK();
++TfLiteRegistration* Register_LINEAR_TRANSFORM();
++TfLiteRegistration* Register_SHUFFLE_CHANNEL();
+ 
+ }  // namespace custom
+ 
+@@ -296,6 +299,9 @@ BuiltinRefOpResolver::BuiltinRefOpResolver() {
+             tflite::ops::custom::Register_AUDIO_SPECTROGRAM());
+   AddCustom("TFLite_Detection_PostProcess",
+             tflite::ops::custom::Register_DETECTION_POSTPROCESS());
++  AddCustom("AddMask", tflite::ops::custom::Register_ADD_MASK());
++  AddCustom("LinearTransform", tflite::ops::custom::Register_LINEAR_TRANSFORM());
++  AddCustom("ShuffleChannel", tflite::ops::custom::Register_SHUFFLE_CHANNEL());
+ }
+ 
+ }  // namespace builtin
+diff --git a/tensorflow/lite/kernels/shuffle_channel.cc b/tensorflow/lite/kernels/shuffle_channel.cc
+new file mode 100644
+index 0000000..17b87da
+--- /dev/null
++++ b/tensorflow/lite/kernels/shuffle_channel.cc
+@@ -0,0 +1,108 @@
++/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "tensorflow/lite/kernels/internal/optimized/optimized_ops.h"
++#include "tensorflow/lite/kernels/internal/reference/reference_ops.h"
++#include "tensorflow/lite/kernels/internal/tensor.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/op_macros.h"
++
++namespace tflite {
++namespace ops {
++namespace custom {
++namespace shuffle_channel {
++
++enum KernelType {
++  kReference,
++};
++
++constexpr int kInputTensorX = 0;
++constexpr int kInputTensorW = 1;
++constexpr int kInputTensorR = 2;
++constexpr int kOutputTensor = 0;
++
++TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
++  TF_LITE_ENSURE_EQ(context, NumInputs(node), 3);
++  TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
++
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_x), 4);
++  TF_LITE_ENSURE_EQ(context, NumDimensions(input_w), 1);
++
++  TF_LITE_ENSURE_EQ(context, output->type, kTfLiteFloat32);
++  TF_LITE_ENSURE_EQ(context, input_x->type, output->type);
++  TF_LITE_ENSURE_EQ(context, input_w->type, kTfLiteInt32);
++  TF_LITE_ENSURE_EQ(context, input_r->type, output->type);
++
++  TfLiteIntArray* output_size = TfLiteIntArrayCreate(4);
++  output_size->data[0] = input_x->dims->data[0];
++  output_size->data[1] = input_x->dims->data[1];
++  output_size->data[2] = input_x->dims->data[2];
++  output_size->data[3] = input_x->dims->data[3];
++
++  return context->ResizeTensor(context, output, output_size);
++}
++
++template <KernelType kernel_type>
++TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
++  const TfLiteTensor* input_x = GetInput(context, node, kInputTensorX);
++  const TfLiteTensor* input_w = GetInput(context, node, kInputTensorW);
++  const TfLiteTensor* input_r = GetInput(context, node, kInputTensorR);
++  TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
++
++  const float* x_flat = GetTensorData<float>(input_x);
++  const int* w_flat = GetTensorData<int>(input_w);
++  const float* r_flat = GetTensorData<float>(input_r);
++  float* output_flat = GetTensorData<float>(output);
++
++  size_t B = input_x->dims->data[0];
++  size_t H = input_x->dims->data[1];
++  size_t W = input_x->dims->data[2];
++  size_t N = input_x->dims->data[3];
++
++  int idx_from;
++  float scalar;
++
++  for (size_t b = 0; b < B; ++b) {
++    for (size_t h = 0; h < H; ++h) {
++      for (size_t w = 0; w < W; ++w) {
++        for (size_t n = 0; n < N; ++n) {
++          idx_from = w_flat[n];
++          scalar = r_flat[n];
++
++          output_flat[(b * H * W * N) + (h * W * N) + (w * N) + n] = 
++            x_flat[(b * H * W * N) + (h * W * N) + (w * N) + idx_from] * scalar; 
++        }
++      }
++    }
++  }
++
++  return kTfLiteOk;
++}
++
++}  // namespace shuffle_channel 
++
++TfLiteRegistration* Register_SHUFFLE_CHANNEL() {
++  static TfLiteRegistration r = {nullptr, nullptr, shuffle_channel::Prepare,
++                                 shuffle_channel::Eval<shuffle_channel::kReference>};
++  return &r;
++}
++
++}  // namespace custom
++}  // namespace ops
++}  // namespace tflite
+-- 
+2.7.4
+

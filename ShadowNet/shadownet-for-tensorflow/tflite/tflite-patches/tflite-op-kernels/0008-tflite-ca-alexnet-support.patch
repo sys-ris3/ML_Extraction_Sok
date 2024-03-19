@@ -1,0 +1,1280 @@
+From 6cf19f63cc0f45a9eaa78387a7e46dbb4ad9e83b Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Fri, 14 Aug 2020 02:55:25 +0000
+Subject: [PATCH 08/12] tflite ca: alexnet support
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ third_party/optee_delegate/BUILD                   |  12 -
+ third_party/optee_delegate/alexnet_ca.BUILD        |  37 ++
+ .../alexnet_ca/include/shadownet_ca.h              |  60 +++
+ .../alexnet_ca/include/tee_client_api.h            | 550 +++++++++++++++++++++
+ .../optee_delegate/alexnet_ca/src/ca_cmds.c        | 237 +++++++++
+ .../optee_delegate/alexnet_ca/src/ca_cmds.h        |  19 +
+ .../optee_delegate/alexnet_ca/src/shadownet_ca.c   | 296 +++++++++++
+ 7 files changed, 1199 insertions(+), 12 deletions(-)
+ create mode 100644 third_party/optee_delegate/alexnet_ca.BUILD
+ create mode 100644 third_party/optee_delegate/alexnet_ca/include/shadownet_ca.h
+ create mode 100644 third_party/optee_delegate/alexnet_ca/include/tee_client_api.h
+ create mode 100644 third_party/optee_delegate/alexnet_ca/src/ca_cmds.c
+ create mode 100644 third_party/optee_delegate/alexnet_ca/src/ca_cmds.h
+ create mode 100644 third_party/optee_delegate/alexnet_ca/src/shadownet_ca.c
+
+diff --git a/third_party/optee_delegate/BUILD b/third_party/optee_delegate/BUILD
+index f54f442..92940cf 100644
+--- a/third_party/optee_delegate/BUILD
++++ b/third_party/optee_delegate/BUILD
+@@ -39,15 +39,3 @@ cc_library(
+ #            "@minivgg//:libminivgg",
+             ],
+ )
+-
+-cc_binary(
+-        name = "fake_ca",
+-        srcs = ["fake_ca.c"],
+-        deps = [
+-                "@shadownet//:libshadownet",
+-                ],
+-        linkopts = select({
+-                "//tensorflow:android": ["-llog"],
+-                "//conditions:default": [],
+-        }),
+-) 
+diff --git a/third_party/optee_delegate/alexnet_ca.BUILD b/third_party/optee_delegate/alexnet_ca.BUILD
+new file mode 100644
+index 0000000..be6c7dc
+--- /dev/null
++++ b/third_party/optee_delegate/alexnet_ca.BUILD
+@@ -0,0 +1,37 @@
++cc_library(
++    name = "libalexnet",
++    srcs = [
++		"src/shadownet_ca.c",
++		"src/ca_cmds.c",
++    ],
++    hdrs = [
++        "include/shadownet_ca.h",
++        "include/tee_client_api.h",
++		"src/ca_cmds.h",
++    ],
++    copts = [
++        "-DDEBUG",
++        "-fPIC",
++        "-c",
++        "-Wall",
++        "-Wno-unused-result",
++        "-Wno-unknown-pragmas",
++        "-Wfatal-errors",
++    ],
++    includes = [
++        "include",
++        "src",
++    ],
++    linkopts = select({
++        "@org_tensorflow//tensorflow:android": [
++            "-lm",
++        ],
++        "//conditions:default": [
++            "-lm",
++        ],
++    }),
++    deps = [
++            "@optee_client//:libteec",
++            ],
++    visibility = ["//visibility:public"],
++)
+diff --git a/third_party/optee_delegate/alexnet_ca/include/shadownet_ca.h b/third_party/optee_delegate/alexnet_ca/include/shadownet_ca.h
+new file mode 100644
+index 0000000..5f1bc6e
+--- /dev/null
++++ b/third_party/optee_delegate/alexnet_ca/include/shadownet_ca.h
+@@ -0,0 +1,60 @@
++#include<string.h>
++#include<android/log.h>
++
++#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "alexnet_ca ", __VA_ARGS__)
++//#define LOGD
++
++#define WEIGHTS_PATH_PREFIX "/data/data/android.example.com.tflitecamerademo/cache/alexnet-submodels/"
++#define WEIGHTS_PATH_SUFFIX ".weights"
++#define MB  (1024*1024)
++
++// skip 20 bytes of weights header: major(4), minor(4), xx(4), seen(8) 
++#define WEIGHTS_HEADER 	20
++
++// do not use AddMask layer to allow preload all weights
++//#define NO_MASK 
++
++
++typedef enum {
++LT, AM_A, AM_B
++}WEIGHTS_TYPE;
++
++#define SHADOWNET_CFG_NUM 9 
++typedef struct shadownet_config {
++    int prepl_hw, pospl_hw, in_chn, units;
++} shadownet_config;
++
++typedef enum {
++CONV1 = 0, 
++CONV2, 
++CONV3, 
++CONV4, 
++CONV5, 
++CONV6, 
++CONV7, 
++CONV8, 
++RESULTS
++}SHADOWNET_CFG_IDX;
++
++SHADOWNET_CFG_IDX get_cfg_idx(char *position); 
++
++void setup_shadownet(void);
++void *map_weights(int idx);
++void init_shadownet_config(void); 
++void shadownet_predict(char *pos, void *input, void *output);
++void load_weights(SHADOWNET_CFG_IDX sn_idx); 
++
++int init_shadownet_tee_ca_cmd(SHADOWNET_CFG_IDX sn_idx); 
++void network_predict_ca_cmd(SHADOWNET_CFG_IDX sn_idx, void *input, int in_len, void *output, int out_len);
++void load_weights_ca_cmd_unit(WEIGHTS_TYPE type, void *weights, int weight_idx, size_t length, size_t offset, SHADOWNET_CFG_IDX sn_idx); 
++void load_weights_ca_cmd(WEIGHTS_TYPE type, void *weights, int weight_idx, size_t length, SHADOWNET_CFG_IDX sn_idx);
++int fetch_results_ca_cmd(void *buf, int out_len); 
++
++void load_alex_conv1_weights(SHADOWNET_CFG_IDX sn_idx);
++void load_alex_conv_norm_weights(SHADOWNET_CFG_IDX sn_idx);
++void load_alex_res_weights(SHADOWNET_CFG_IDX sn_idx);
++
++int load_add_mask_a_weights(void *addr, SHADOWNET_CFG_IDX sn_idx); 
++int load_add_mask_b_weights(void *addr, SHADOWNET_CFG_IDX sn_idx); 
++int load_linear_transform_weights(void *addr, SHADOWNET_CFG_IDX sn_idx);
++
+diff --git a/third_party/optee_delegate/alexnet_ca/include/tee_client_api.h b/third_party/optee_delegate/alexnet_ca/include/tee_client_api.h
+new file mode 100644
+index 0000000..70e76ae
+--- /dev/null
++++ b/third_party/optee_delegate/alexnet_ca/include/tee_client_api.h
+@@ -0,0 +1,550 @@
++/*
++ * Copyright (c) 2014, STMicroelectronics International N.V.
++ * All rights reserved.
++ * Copyright (c) 2015, Linaro Limited
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice,
++ * this list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ * this list of conditions and the following disclaimer in the documentation
++ * and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
++ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++#ifndef TEE_CLIENT_API_H
++#define TEE_CLIENT_API_H
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#include <stdint.h>
++#include <stddef.h>
++#include <stdbool.h>
++#include <limits.h>
++
++/*
++ * Defines the number of available memory references in an open session or
++ * invoke command operation payload.
++ */
++#define TEEC_CONFIG_PAYLOAD_REF_COUNT 4
++
++/**
++ * Defines the maximum size of a single shared memory block, in bytes, of both
++ * API allocated and API registered memory. There is no good value to put here
++ * (limits depend on specific config used), so this define does not provide any
++ * restriction in this implementation.
++ */
++#define TEEC_CONFIG_SHAREDMEM_MAX_SIZE ULONG_MAX
++
++/**
++ * Flag constants indicating the type of parameters encoded inside the
++ * operation payload (TEEC_Operation), Type is uint32_t.
++ *
++ * TEEC_NONE                   The Parameter is not used
++ *
++ * TEEC_VALUE_INPUT            The Parameter is a TEEC_Value tagged as input.
++ *
++ * TEEC_VALUE_OUTPUT           The Parameter is a TEEC_Value tagged as output.
++ *
++ * TEEC_VALUE_INOUT            The Parameter is a TEEC_Value tagged as both as
++ *                             input and output, i.e., for which both the
++ *                             behaviors of TEEC_VALUE_INPUT and
++ *                             TEEC_VALUE_OUTPUT apply.
++ *
++ * TEEC_MEMREF_TEMP_INPUT      The Parameter is a TEEC_TempMemoryReference
++ *                             describing a region of memory which needs to be
++ *                             temporarily registered for the duration of the
++ *                             Operation and is tagged as input.
++ *
++ * TEEC_MEMREF_TEMP_OUTPUT     Same as TEEC_MEMREF_TEMP_INPUT, but the Memory
++ *                             Reference is tagged as output. The
++ *                             Implementation may update the size field to
++ *                             reflect the required output size in some use
++ *                             cases.
++ *
++ * TEEC_MEMREF_TEMP_INOUT      A Temporary Memory Reference tagged as both
++ *                             input and output, i.e., for which both the
++ *                             behaviors of TEEC_MEMREF_TEMP_INPUT and
++ *                             TEEC_MEMREF_TEMP_OUTPUT apply.
++ *
++ * TEEC_MEMREF_WHOLE           The Parameter is a Registered Memory Reference
++ *                             that refers to the entirety of its parent Shared
++ *                             Memory block. The parameter structure is a
++ *                             TEEC_MemoryReference. In this structure, the
++ *                             Implementation MUST read only the parent field
++ *                             and MAY update the size field when the operation
++ *                             completes.
++ *
++ * TEEC_MEMREF_PARTIAL_INPUT   A Registered Memory Reference structure that
++ *                             refers to a partial region of its parent Shared
++ *                             Memory block and is tagged as input.
++ *
++ * TEEC_MEMREF_PARTIAL_OUTPUT  Registered Memory Reference structure that
++ *                             refers to a partial region of its parent Shared
++ *                             Memory block and is tagged as output.
++ *
++ * TEEC_MEMREF_PARTIAL_INOUT   The Registered Memory Reference structure that
++ *                             refers to a partial region of its parent Shared
++ *                             Memory block and is tagged as both input and
++ *                             output, i.e., for which both the behaviors of
++ *                             TEEC_MEMREF_PARTIAL_INPUT and
++ *                             TEEC_MEMREF_PARTIAL_OUTPUT apply.
++ */
++#define TEEC_NONE                   0x00000000
++#define TEEC_VALUE_INPUT            0x00000001
++#define TEEC_VALUE_OUTPUT           0x00000002
++#define TEEC_VALUE_INOUT            0x00000003
++#define TEEC_MEMREF_TEMP_INPUT      0x00000005
++#define TEEC_MEMREF_TEMP_OUTPUT     0x00000006
++#define TEEC_MEMREF_TEMP_INOUT      0x00000007
++#define TEEC_MEMREF_WHOLE           0x0000000C
++#define TEEC_MEMREF_PARTIAL_INPUT   0x0000000D
++#define TEEC_MEMREF_PARTIAL_OUTPUT  0x0000000E
++#define TEEC_MEMREF_PARTIAL_INOUT   0x0000000F
++
++/**
++ * Flag constants indicating the data transfer direction of memory in
++ * TEEC_Parameter. TEEC_MEM_INPUT signifies data transfer direction from the
++ * client application to the TEE. TEEC_MEM_OUTPUT signifies data transfer
++ * direction from the TEE to the client application. Type is uint32_t.
++ *
++ * TEEC_MEM_INPUT   The Shared Memory can carry data from the client
++ *                  application to the Trusted Application.
++ * TEEC_MEM_OUTPUT  The Shared Memory can carry data from the Trusted
++ *                  Application to the client application.
++ */
++#define TEEC_MEM_INPUT   0x00000001
++#define TEEC_MEM_OUTPUT  0x00000002
++
++/**
++ * Return values. Type is TEEC_Result
++ *
++ * TEEC_SUCCESS                 The operation was successful.
++ * TEEC_ERROR_GENERIC           Non-specific cause.
++ * TEEC_ERROR_ACCESS_DENIED     Access privileges are not sufficient.
++ * TEEC_ERROR_CANCEL            The operation was canceled.
++ * TEEC_ERROR_ACCESS_CONFLICT   Concurrent accesses caused conflict.
++ * TEEC_ERROR_EXCESS_DATA       Too much data for the requested operation was
++ *                              passed.
++ * TEEC_ERROR_BAD_FORMAT        Input data was of invalid format.
++ * TEEC_ERROR_BAD_PARAMETERS    Input parameters were invalid.
++ * TEEC_ERROR_BAD_STATE         Operation is not valid in the current state.
++ * TEEC_ERROR_ITEM_NOT_FOUND    The requested data item is not found.
++ * TEEC_ERROR_NOT_IMPLEMENTED   The requested operation should exist but is not
++ *                              yet implemented.
++ * TEEC_ERROR_NOT_SUPPORTED     The requested operation is valid but is not
++ *                              supported in this implementation.
++ * TEEC_ERROR_NO_DATA           Expected data was missing.
++ * TEEC_ERROR_OUT_OF_MEMORY     System ran out of resources.
++ * TEEC_ERROR_BUSY              The system is busy working on something else.
++ * TEEC_ERROR_COMMUNICATION     Communication with a remote party failed.
++ * TEEC_ERROR_SECURITY          A security fault was detected.
++ * TEEC_ERROR_SHORT_BUFFER      The supplied buffer is too short for the
++ *                              generated output.
++ * TEEC_ERROR_TARGET_DEAD       Trusted Application has panicked
++ *                              during the operation.
++ */
++
++/**
++ *  Standard defined error codes.
++ */
++#define TEEC_SUCCESS                       0x00000000
++#define TEEC_ERROR_STORAGE_NOT_AVAILABLE   0xF0100003
++#define TEEC_ERROR_GENERIC                 0xFFFF0000
++#define TEEC_ERROR_ACCESS_DENIED           0xFFFF0001
++#define TEEC_ERROR_CANCEL                  0xFFFF0002
++#define TEEC_ERROR_ACCESS_CONFLICT         0xFFFF0003
++#define TEEC_ERROR_EXCESS_DATA             0xFFFF0004
++#define TEEC_ERROR_BAD_FORMAT              0xFFFF0005
++#define TEEC_ERROR_BAD_PARAMETERS          0xFFFF0006
++#define TEEC_ERROR_BAD_STATE               0xFFFF0007
++#define TEEC_ERROR_ITEM_NOT_FOUND          0xFFFF0008
++#define TEEC_ERROR_NOT_IMPLEMENTED         0xFFFF0009
++#define TEEC_ERROR_NOT_SUPPORTED           0xFFFF000A
++#define TEEC_ERROR_NO_DATA                 0xFFFF000B
++#define TEEC_ERROR_OUT_OF_MEMORY           0xFFFF000C
++#define TEEC_ERROR_BUSY                    0xFFFF000D
++#define TEEC_ERROR_COMMUNICATION           0xFFFF000E
++#define TEEC_ERROR_SECURITY                0xFFFF000F
++#define TEEC_ERROR_SHORT_BUFFER            0xFFFF0010
++#define TEEC_ERROR_EXTERNAL_CANCEL         0xFFFF0011
++#define TEEC_ERROR_TARGET_DEAD             0xFFFF3024
++
++/**
++ * Function error origins, of type TEEC_ErrorOrigin. These indicate where in
++ * the software stack a particular return value originates from.
++ *
++ * TEEC_ORIGIN_API          The error originated within the TEE Client API
++ *                          implementation.
++ * TEEC_ORIGIN_COMMS        The error originated within the underlying
++ *                          communications stack linking the rich OS with
++ *                          the TEE.
++ * TEEC_ORIGIN_TEE          The error originated within the common TEE code.
++ * TEEC_ORIGIN_TRUSTED_APP  The error originated within the Trusted Application
++ *                          code.
++ */
++#define TEEC_ORIGIN_API          0x00000001
++#define TEEC_ORIGIN_COMMS        0x00000002
++#define TEEC_ORIGIN_TEE          0x00000003
++#define TEEC_ORIGIN_TRUSTED_APP  0x00000004
++
++/**
++ * Session login methods, for use in TEEC_OpenSession() as parameter
++ * connectionMethod. Type is uint32_t.
++ *
++ * TEEC_LOGIN_PUBLIC    	 No login data is provided.
++ * TEEC_LOGIN_USER         	Login data about the user running the Client
++ *                         	Application process is provided.
++ * TEEC_LOGIN_GROUP        	Login data about the group running the Client
++ *                         	Application process is provided.
++ * TEEC_LOGIN_APPLICATION  	Login data about the running Client Application
++ *                         	itself is provided.
++ * TEEC_LOGIN_USER_APPLICATION  Login data about the user and the running
++ *                          	Client Application itself is provided.
++ * TEEC_LOGIN_GROUP_APPLICATION Login data about the group and the running
++ *                          	Client Application itself is provided.
++ */
++#define TEEC_LOGIN_PUBLIC       0x00000000
++#define TEEC_LOGIN_USER         0x00000001
++#define TEEC_LOGIN_GROUP        0x00000002
++#define TEEC_LOGIN_APPLICATION  0x00000004
++#define TEEC_LOGIN_USER_APPLICATION  0x00000005
++#define TEEC_LOGIN_GROUP_APPLICATION  0x00000006
++
++/**
++ * Encode the paramTypes according to the supplied types.
++ *
++ * @param p0 The first param type.
++ * @param p1 The second param type.
++ * @param p2 The third param type.
++ * @param p3 The fourth param type.
++ */
++#define TEEC_PARAM_TYPES(p0, p1, p2, p3) \
++	((p0) | ((p1) << 4) | ((p2) << 8) | ((p3) << 12))
++
++/**
++ * Get the i_th param type from the paramType.
++ *
++ * @param p The paramType.
++ * @param i The i-th parameter to get the type for.
++ */
++#define TEEC_PARAM_TYPE_GET(p, i) (((p) >> (i * 4)) & 0xF)
++
++typedef uint32_t TEEC_Result;
++
++/**
++ * struct TEEC_Context - Represents a connection between a client application
++ * and a TEE.
++ */
++typedef struct {
++	/* Implementation defined */
++	int fd;
++	bool reg_mem;
++} TEEC_Context;
++
++/**
++ * This type contains a Universally Unique Resource Identifier (UUID) type as
++ * defined in RFC4122. These UUID values are used to identify Trusted
++ * Applications.
++ */
++typedef struct {
++	uint32_t timeLow;
++	uint16_t timeMid;
++	uint16_t timeHiAndVersion;
++	uint8_t clockSeqAndNode[8];
++} TEEC_UUID;
++
++/**
++ * struct TEEC_SharedMemory - Memory to transfer data between a client
++ * application and trusted code.
++ *
++ * @param buffer      The memory buffer which is to be, or has been, shared
++ *                    with the TEE.
++ * @param size        The size, in bytes, of the memory buffer.
++ * @param flags       Bit-vector which holds properties of buffer.
++ *                    The bit-vector can contain either or both of the
++ *                    TEEC_MEM_INPUT and TEEC_MEM_OUTPUT flags.
++ *
++ * A shared memory block is a region of memory allocated in the context of the
++ * client application memory space that can be used to transfer data between
++ * that client application and a trusted application. The user of this struct
++ * is responsible to populate the buffer pointer.
++ */
++typedef struct {
++	void *buffer;
++	size_t size;
++	uint32_t flags;
++	/*
++	 * Implementation-Defined
++	 */
++	int id;
++	size_t alloced_size;
++	void *shadow_buffer;
++	int registered_fd;
++	bool buffer_allocated;
++} TEEC_SharedMemory;
++
++/**
++ * struct TEEC_TempMemoryReference - Temporary memory to transfer data between
++ * a client application and trusted code, only used for the duration of the
++ * operation.
++ *
++ * @param buffer  The memory buffer which is to be, or has been shared with
++ *                the TEE.
++ * @param size    The size, in bytes, of the memory buffer.
++ *
++ * A memory buffer that is registered temporarily for the duration of the
++ * operation to be called.
++ */
++typedef struct {
++	void *buffer;
++	size_t size;
++} TEEC_TempMemoryReference;
++
++/**
++ * struct TEEC_RegisteredMemoryReference - use a pre-registered or
++ * pre-allocated shared memory block of memory to transfer data between
++ * a client application and trusted code.
++ *
++ * @param parent  Points to a shared memory structure. The memory reference
++ *                may utilize the whole shared memory or only a part of it.
++ *                Must not be NULL
++ *
++ * @param size    The size, in bytes, of the memory buffer.
++ *
++ * @param offset  The offset, in bytes, of the referenced memory region from
++ *                the start of the shared memory block.
++ *
++ */
++typedef struct {
++	TEEC_SharedMemory *parent;
++	size_t size;
++	size_t offset;
++} TEEC_RegisteredMemoryReference;
++
++/**
++ * struct TEEC_Value - Small raw data container
++ *
++ * Instead of allocating a shared memory buffer this structure can be used
++ * to pass small raw data between a client application and trusted code.
++ *
++ * @param a  The first integer value.
++ *
++ * @param b  The second value.
++ */
++typedef struct {
++	uint32_t a;
++	uint32_t b;
++} TEEC_Value;
++
++/**
++ * union TEEC_Parameter - Memory container to be used when passing data between
++ *                        client application and trusted code.
++ *
++ * Either the client uses a shared memory reference, parts of it or a small raw
++ * data container.
++ *
++ * @param tmpref  A temporary memory reference only valid for the duration
++ *                of the operation.
++ *
++ * @param memref  The entire shared memory or parts of it.
++ *
++ * @param value   The small raw data container to use
++ */
++typedef union {
++	TEEC_TempMemoryReference tmpref;
++	TEEC_RegisteredMemoryReference memref;
++	TEEC_Value value;
++} TEEC_Parameter;
++
++/**
++ * struct TEEC_Session - Represents a connection between a client application
++ * and a trusted application.
++ */
++typedef struct {
++	/* Implementation defined */
++	TEEC_Context *ctx;
++	uint32_t session_id;
++} TEEC_Session;
++
++/**
++ * struct TEEC_Operation - Holds information and memory references used in
++ * TEEC_InvokeCommand().
++ *
++ * @param   started     Client must initialize to zero if it needs to cancel
++ *                      an operation about to be performed.
++ * @param   paramTypes  Type of data passed. Use TEEC_PARAMS_TYPE macro to
++ *                      create the correct flags.
++ *                      0 means TEEC_NONE is passed for all params.
++ * @param   params      Array of parameters of type TEEC_Parameter.
++ * @param   session     Internal pointer to the last session used by
++ *                      TEEC_InvokeCommand with this operation.
++ *
++ */
++typedef struct {
++	uint32_t started;
++	uint32_t paramTypes;
++	TEEC_Parameter params[TEEC_CONFIG_PAYLOAD_REF_COUNT];
++	/* Implementation-Defined */
++	TEEC_Session *session;
++} TEEC_Operation;
++
++/**
++ * TEEC_InitializeContext() - Initializes a context holding connection
++ * information on the specific TEE, designated by the name string.
++
++ * @param name    A zero-terminated string identifying the TEE to connect to.
++ *                If name is set to NULL, the default TEE is connected to. NULL
++ *                is the only supported value in this version of the API
++ *                implementation.
++ *
++ * @param context The context structure which is to be initialized.
++ *
++ * @return TEEC_SUCCESS  The initialization was successful.
++ * @return TEEC_Result   Something failed.
++ */
++TEEC_Result TEEC_InitializeContext(const char *name, TEEC_Context *context);
++
++/**
++ * TEEC_FinalizeContext() - Destroys a context holding connection information
++ * on the specific TEE.
++ *
++ * This function destroys an initialized TEE context, closing the connection
++ * between the client application and the TEE. This function must only be
++ * called when all sessions related to this TEE context have been closed and
++ * all shared memory blocks have been released.
++ *
++ * @param context       The context to be destroyed.
++ */
++void TEEC_FinalizeContext(TEEC_Context *context);
++
++/**
++ * TEEC_OpenSession() - Opens a new session with the specified trusted
++ *                      application.
++ *
++ * @param context            The initialized TEE context structure in which
++ *                           scope to open the session.
++ * @param session            The session to initialize.
++ * @param destination        A structure identifying the trusted application
++ *                           with which to open a session.
++ *
++ * @param connectionMethod   The connection method to use.
++ * @param connectionData     Any data necessary to connect with the chosen
++ *                           connection method. Not supported, should be set to
++ *                           NULL.
++ * @param operation          An operation structure to use in the session. May
++ *                           be set to NULL to signify no operation structure
++ *                           needed.
++ *
++ * @param returnOrigin       A parameter which will hold the error origin if
++ *                           this function returns any value other than
++ *                           TEEC_SUCCESS.
++ *
++ * @return TEEC_SUCCESS      OpenSession successfully opened a new session.
++ * @return TEEC_Result       Something failed.
++ *
++ */
++TEEC_Result TEEC_OpenSession(TEEC_Context *context,
++			     TEEC_Session *session,
++			     const TEEC_UUID *destination,
++			     uint32_t connectionMethod,
++			     const void *connectionData,
++			     TEEC_Operation *operation,
++			     uint32_t *returnOrigin);
++
++/**
++ * TEEC_CloseSession() - Closes the session which has been opened with the
++ * specific trusted application.
++ *
++ * @param session The opened session to close.
++ */
++void TEEC_CloseSession(TEEC_Session *session);
++
++/**
++ * TEEC_InvokeCommand() - Executes a command in the specified trusted
++ * application.
++ *
++ * @param session        A handle to an open connection to the trusted
++ *                       application.
++ * @param commandID      Identifier of the command in the trusted application
++ *                       to invoke.
++ * @param operation      An operation structure to use in the invoke command.
++ *                       May be set to NULL to signify no operation structure
++ *                       needed.
++ * @param returnOrigin   A parameter which will hold the error origin if this
++ *                       function returns any value other than TEEC_SUCCESS.
++ *
++ * @return TEEC_SUCCESS  OpenSession successfully opened a new session.
++ * @return TEEC_Result   Something failed.
++ */
++TEEC_Result TEEC_InvokeCommand(TEEC_Session *session,
++			       uint32_t commandID,
++			       TEEC_Operation *operation,
++			       uint32_t *returnOrigin);
++
++/**
++ * TEEC_RegisterSharedMemory() - Register a block of existing memory as a
++ * shared block within the scope of the specified context.
++ *
++ * @param context    The initialized TEE context structure in which scope to
++ *                   open the session.
++ * @param sharedMem  pointer to the shared memory structure to register.
++ *
++ * @return TEEC_SUCCESS              The registration was successful.
++ * @return TEEC_ERROR_OUT_OF_MEMORY  Memory exhaustion.
++ * @return TEEC_Result               Something failed.
++ */
++TEEC_Result TEEC_RegisterSharedMemory(TEEC_Context *context,
++				      TEEC_SharedMemory *sharedMem);
++
++/**
++ * TEEC_AllocateSharedMemory() - Allocate shared memory for TEE.
++ *
++ * @param context     The initialized TEE context structure in which scope to
++ *                    open the session.
++ * @param sharedMem   Pointer to the allocated shared memory.
++ *
++ * @return TEEC_SUCCESS              The registration was successful.
++ * @return TEEC_ERROR_OUT_OF_MEMORY  Memory exhaustion.
++ * @return TEEC_Result               Something failed.
++ */
++TEEC_Result TEEC_AllocateSharedMemory(TEEC_Context *context,
++				      TEEC_SharedMemory *sharedMem);
++
++/**
++ * TEEC_ReleaseSharedMemory() - Free or deregister the shared memory.
++ *
++ * @param sharedMem  Pointer to the shared memory to be freed.
++ */
++void TEEC_ReleaseSharedMemory(TEEC_SharedMemory *sharedMemory);
++
++/**
++ * TEEC_RequestCancellation() - Request the cancellation of a pending open
++ *                              session or command invocation.
++ *
++ * @param operation Pointer to an operation previously passed to open session
++ *                  or invoke.
++ */
++void TEEC_RequestCancellation(TEEC_Operation *operation);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+diff --git a/third_party/optee_delegate/alexnet_ca/src/ca_cmds.c b/third_party/optee_delegate/alexnet_ca/src/ca_cmds.c
+new file mode 100644
+index 0000000..7a46017
+--- /dev/null
++++ b/third_party/optee_delegate/alexnet_ca/src/ca_cmds.c
+@@ -0,0 +1,237 @@
++#include "ca_cmds.h"
++#include <shadownet_ca.h>
++
++void setup_tee_session(void);
++void teardown_tee_session(void);
++TEEC_Context ctx;
++TEEC_Session sess;
++TEEC_SharedMemory shm;
++int tee_initialized = 0;
++
++int fetch_results_ca_cmd(void *buf, int out_len) {
++  TEEC_Operation op;
++  TEEC_Result res;
++  uint32_t origin;
++  void *cur = NULL;
++  int offset, left, payload;
++
++  offset = 0;
++  left = out_len;
++  cur = (char *)buf + offset;
++
++  while(left > 0) {
++    memset(&op, 0, sizeof(op));
++    op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INOUT, TEEC_VALUE_INOUT, 
++                                     TEEC_NONE, TEEC_NONE);
++
++    op.params[0].tmpref.buffer = cur;
++    if (left > MB)
++        op.params[0].tmpref.size = MB; // always allow 1 MB to be copied 
++    else
++        op.params[0].tmpref.size = left; // always allow 1 MB to be copied 
++
++    res = TEEC_InvokeCommand(&sess, CMD_FETCH_RESULTS,
++                             &op, &origin);
++
++    if (res != TEEC_SUCCESS) {
++        LOGD( "TEEC_InvokeCommand(CMD_FETCH_RESULTS) failed 0x%x origin 0x%x", res, origin);
++        break;
++    }
++
++    payload = op.params[1].value.a;
++    left = op.params[1].value.b;
++
++    offset += payload;
++    cur = (char *)buf + offset; 
++
++    //LOGD("out_len:%d offset:%d, left:%d",out_len, offset, left);
++  }
++  
++  if (offset != out_len) {
++      LOGD(" ERROR! fetch results offset(%d) != out_len(%d) ",offset, out_len);
++  }
++  return 0;
++}
++
++int init_shadownet_tee_ca_cmd(SHADOWNET_CFG_IDX sn_idx) {
++  TEEC_Operation op;
++  TEEC_Result res;
++  uint32_t origin;
++
++  //LOGD("init_shadownet_tee called sn_idx:%d ", sn_idx);
++
++  if (tee_initialized == 0) {
++      setup_tee_session();
++      tee_initialized = 1;
++  }
++
++  memset(&op, 0, sizeof(op));
++  op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INOUT, TEEC_NONE,
++                                   TEEC_NONE, TEEC_NONE);
++
++  op.params[0].value.a = sn_idx;
++
++  res = TEEC_InvokeCommand(&sess, CMD_INIT_SHADOWNET,
++                           &op, &origin);
++
++  if (res != TEEC_SUCCESS)
++  LOGD( "TEEC_InvokeCommand(CMD_INIT_SHADOWNET) failed 0x%x origin 0x%x",
++          res, origin);
++  
++  return 0;
++}
++
++void load_weights_ca_cmd(WEIGHTS_TYPE type, void *weights, int weight_idx, size_t length, SHADOWNET_CFG_IDX sn_idx)
++{
++  void *cur = NULL;
++  int offset, left, payload;
++
++  //LOGD("load_weights_ca_cmd");
++  //LOGD("load_weights: weigths:%p, length:%d,ta_netid:%d,lid:%d,idx:%d,length:%d",weights,length,ta_netid,layer_id,weight_idx,length);
++  if (length > MB) {
++      left = length;
++      offset = 0;
++      while (left > 0) {
++          if (left > MB)
++              payload = MB; 
++           else
++              payload = left;
++
++          cur = (uint8_t *)weights + offset;
++          load_weights_ca_cmd_unit(type, cur, weight_idx, payload, offset, sn_idx);
++
++          offset += payload;
++          left -= payload;
++      }
++  } else
++    load_weights_ca_cmd_unit(type, weights, weight_idx, length, 0, sn_idx);
++
++  return;
++}
++
++void load_weights_ca_cmd_unit(WEIGHTS_TYPE type, void *weights, int weight_idx, size_t length, size_t offset, SHADOWNET_CFG_IDX sn_idx) {
++  TEEC_Operation op;
++  TEEC_Result res;
++  uint32_t origin;
++
++  memset(&op, 0, sizeof(op));
++  op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, TEEC_VALUE_INOUT,
++                                   TEEC_VALUE_INOUT, TEEC_VALUE_INOUT);
++
++  //LOGD("load_weights: weigths:%p, length:%d,ta_netid:%d,lid:%d,idx:%d,length:%d, offset:%d ",weights,length,ta_netid,layer_id,weight_idx,length,offset);
++  op.params[0].tmpref.buffer = weights;
++  op.params[0].tmpref.size = length; 
++
++  op.params[1].value.b = type;
++
++  op.params[2].value.a = weight_idx;
++  op.params[2].value.b = length;
++
++  op.params[3].value.a = offset;
++  op.params[3].value.b = sn_idx;
++
++  res = TEEC_InvokeCommand(&sess, CMD_LOAD_WEIGHTS,
++                           &op, &origin);
++
++  if (res != TEEC_SUCCESS)
++  LOGD("TEEC_InvokeCommand(LOAD_WEIGHTS) failed 0x%x origin 0x%x", res, origin);
++}
++
++void network_predict_ca_cmd(SHADOWNET_CFG_IDX sn_idx, void *input, int in_len, void *output, int out_len)
++{
++  TEEC_Operation op;
++  TEEC_Result res;
++  uint32_t origin;
++  int fetch_results_needed = 0;
++
++  memset(&op, 0, sizeof(op));
++
++#ifdef USE_MEMREF_TEMP
++  op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INOUT, TEEC_NONE,
++                                   TEEC_VALUE_INOUT, TEEC_NONE);
++
++  op.params[0].tmpref.buffer = input;
++  op.params[0].tmpref.size = in_len; 
++
++#else // RegisterShredMemory
++  op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_PARTIAL_INOUT, TEEC_NONE,
++                                   TEEC_VALUE_INOUT, TEEC_NONE);
++  
++
++  shm.buffer = input;
++  shm.size = in_len;
++  shm.flags = TEEC_MEM_INPUT|TEEC_MEM_OUTPUT;
++  res = TEEC_RegisterSharedMemory(&ctx, &shm);
++  if (res != TEEC_SUCCESS) {
++      LOGD("TEEC_InvokeCommand(RegisterSharedMemory) failed 0x%x, input size:%d", res, in_len);
++
++      //fetch_results_needed = 1;
++      //load_weights_ca_cmd(BIG_INPUT, input, 0, in_len, sn_idx);
++      //op.params[2].value.a = BIG_INPUT;
++  }
++
++  if (fetch_results_needed == 0) {
++    op.params[0].memref.parent = &shm;
++    op.params[0].memref.offset = 0; 
++    op.params[0].memref.size = in_len; 
++  } else {
++    op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INOUT, TEEC_NONE,
++                                     TEEC_VALUE_INOUT, TEEC_NONE);
++
++    op.params[0].tmpref.buffer = input;
++    op.params[0].tmpref.size = 1; 
++  }
++#endif
++
++  op.params[2].value.b = sn_idx;
++
++
++  res = TEEC_InvokeCommand(&sess, CMD_NETWORK_PREDICT,
++                           &op, &origin);
++
++  if (res != TEEC_SUCCESS)
++  LOGD("TEEC_InvokeCommand(NETWORK_PREDICT) failed 0x%x origin 0x%x",
++       res, origin);
++
++  if (fetch_results_needed == 1) {
++        fetch_results_ca_cmd(output, out_len);
++        fetch_results_needed = 0;
++  } else {
++        // reuse input buffer for output in tee and then copy out
++        memcpy(output, input, out_len);
++  }
++
++#if USE_MEMREF_TEMP
++#else
++  TEEC_ReleaseSharedMemory(&shm);
++#endif
++
++  return;
++}
++
++void setup_tee_session(void)
++{
++    TEEC_UUID uuid = TA_TEE_SHADOW_UUID;
++    TEEC_Result res;
++    uint32_t origin;
++
++    /* Initialize a context connecting us to the TEE */
++    res = TEEC_InitializeContext(NULL, &ctx);
++    if (res != TEEC_SUCCESS)
++    LOGD("TEEC_InitializeContext failed with code 0x%x", res);
++
++    /* Open a session with the TA */
++    res = TEEC_OpenSession(&ctx, &sess, &uuid,
++                           TEEC_LOGIN_PUBLIC, NULL, NULL, &origin);
++    if (res != TEEC_SUCCESS)
++    LOGD("TEEC_Opensession failed with code 0x%x origin 0x%x",res, origin);
++
++
++}
++
++void teardown_tee_session(void)
++{
++    TEEC_CloseSession(&sess);
++    TEEC_FinalizeContext(&ctx);
++}
++
+diff --git a/third_party/optee_delegate/alexnet_ca/src/ca_cmds.h b/third_party/optee_delegate/alexnet_ca/src/ca_cmds.h
+new file mode 100644
+index 0000000..0e4d73c
+--- /dev/null
++++ b/third_party/optee_delegate/alexnet_ca/src/ca_cmds.h
+@@ -0,0 +1,19 @@
++#include <err.h>
++#include <stdio.h>
++#include <string.h>
++#include <tee_client_api.h>
++
++#define TA_HELLO_WORLD_UUID \
++        { 0x8aaaf200, 0x2450, 0x11e4, \
++                { 0xab, 0xe2, 0x00, 0x02, 0xa5, 0xd5, 0xc5, 0x1b} }
++
++// TODO
++#define CMD_TEST                    0
++
++#define MODEL_SAFE_BASE             518 
++#define CMD_INIT_SHADOWNET         (MODEL_SAFE_BASE + 0)
++#define CMD_LOAD_WEIGHTS            (MODEL_SAFE_BASE + 1) 
++#define CMD_NETWORK_PREDICT         (MODEL_SAFE_BASE + 2)
++#define CMD_FETCH_RESULTS           (MODEL_SAFE_BASE + 3)
++
++#define TA_TEE_SHADOW_UUID           TA_HELLO_WORLD_UUID 
+diff --git a/third_party/optee_delegate/alexnet_ca/src/shadownet_ca.c b/third_party/optee_delegate/alexnet_ca/src/shadownet_ca.c
+new file mode 100644
+index 0000000..424c746
+--- /dev/null
++++ b/third_party/optee_delegate/alexnet_ca/src/shadownet_ca.c
+@@ -0,0 +1,296 @@
++#include <shadownet_ca.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++
++void *weights_addrs[SHADOWNET_CFG_NUM];
++shadownet_config sdw_cfg[SHADOWNET_CFG_NUM];
++int shadownet_initialized = 0;
++
++char *shadownet_names[SHADOWNET_CFG_NUM] = {
++    "conv1", 
++    "conv2", 
++    "conv3",
++    "conv4",
++    "conv5",
++    "conv6",
++    "conv7",
++    "conv8",
++    "results"
++};
++
++void *map_weights(int idx) {
++    int fd;
++    struct stat sb;
++    size_t length;
++    char weights_path[256]={0};
++    void *weights_addr;
++
++    // get weights path
++    strcat(weights_path, WEIGHTS_PATH_PREFIX);
++    strcat(weights_path, shadownet_names[idx]); 
++    strcat(weights_path, WEIGHTS_PATH_SUFFIX);
++
++    fd = open(weights_path, O_RDONLY);
++    //LOGD("fd:%d, weights_path:%s",fd, weights_path);
++    if (fd == -1)
++        LOGD("open error! weights_path:%s",weights_path);
++
++    if (fstat(fd, &sb) == -1)           /* To obtain file size */
++        LOGD("fstat error!");
++
++	length = sb.st_size;
++
++    weights_addr = mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0);
++
++    if (weights_addr == MAP_FAILED)
++        LOGD("mmap error!");
++
++	// OK to close even if not unmap
++	//fclose(fd);
++	return weights_addr;
++}
++
++void map_all_weights(void){
++    int i = 0;
++    for (i = 0; i < SHADOWNET_CFG_NUM; i++) {
++        weights_addrs[i] = map_weights(i); 
++		if(weights_addrs[i] == MAP_FAILED)
++            LOGD("MAP_FAILED! %d", i);
++        //LOGD("map weights i:%d ,weights_addr:%p",i, weights_addrs[i]);
++    }
++}
++
++// prepl_hw: pre-pooling-layer input Height * Width 
++// pospl_hw: post-pooling-layer input Height * Width
++// for many sub-layers, there is no pooling layer
++#define FILL_SDW_CFG(idx, PRE, POS, CHN, UNITS)    \
++    sdw_cfg[idx].prepl_hw = PRE;                     \
++    sdw_cfg[idx].pospl_hw = POS;                     \
++    sdw_cfg[idx].in_chn = CHN;                     \
++    sdw_cfg[idx].units = UNITS
++
++void init_shadownet_config(void) {
++    FILL_SDW_CFG(CONV1, 55*55, 27*27, 115, 96); 
++    FILL_SDW_CFG(CONV2, 27*27, 13*13, 307, 256); 
++    FILL_SDW_CFG(CONV3, 13*13, 13*13, 460, 384); 
++    FILL_SDW_CFG(CONV4, 13*13, 13*13, 460, 384); 
++    FILL_SDW_CFG(CONV5, 13*13, 6*6, 307, 256); 
++    FILL_SDW_CFG(CONV6, 1, 1, 4915, 4096); 
++    FILL_SDW_CFG(CONV7, 1, 1, 4915, 4096); 
++    FILL_SDW_CFG(CONV8, 1, 1, 1200, 1000); 
++    FILL_SDW_CFG(RESULTS, 1, 1, 1200, 1000); 
++}
++
++
++SHADOWNET_CFG_IDX get_cfg_idx(char *position) {
++    if (strcmp(position, "conv_1") == 0) 
++        return CONV1;
++    else if (strcmp(position, "conv_2") == 0)
++        return CONV2;
++    else if (strcmp(position, "conv_3") == 0)
++        return CONV3;
++    else if (strcmp(position, "conv_4") == 0)
++        return CONV4;
++    else if (strcmp(position, "conv_5") == 0)
++        return CONV5;
++    else if (strcmp(position, "conv_6") == 0)
++        return CONV6;
++    else if (strcmp(position, "conv_7") == 0)
++        return CONV7;
++    else if (strcmp(position, "conv_8") == 0)
++        return CONV8;
++    else if (strcmp(position, "results") == 0)
++        return RESULTS;
++    else
++        return -1;
++}
++
++void setup_shadownet(void) {
++	init_shadownet_config(); 
++	map_all_weights();
++}
++
++static inline int get_sn_input_len (int idx){
++    return sdw_cfg[idx].prepl_hw * sdw_cfg[idx].in_chn *sizeof(float);
++}
++static inline int get_sn_output_len (int idx){
++	return sdw_cfg[idx].pospl_hw * sdw_cfg[idx].units *sizeof(float);
++}
++
++static inline void copy_result(float *output, float *res, int outputs) {
++	if (!(outputs >= 0 && output != NULL && res != NULL))
++        LOGD("copy_result error!");
++	for (int i = 0; i < outputs; i++)
++		output[i] = res[i];
++}
++
++void shadownet_predict(char *pos, void *input, void *output) {
++	int i, in_len, out_len;
++	SHADOWNET_CFG_IDX sn_idx;
++
++	if (shadownet_initialized == 0) {
++		setup_shadownet();
++		shadownet_initialized = 1; 
++        // ignore sn_idx param, init all weights in TA
++        init_shadownet_tee_ca_cmd(0);
++        // load all layer weights
++        for (i = CONV1; i < SHADOWNET_CFG_NUM; ++i)
++	        load_weights(i);
++	}
++
++    //LOGD("load weights begin!");
++	sn_idx = get_cfg_idx(pos);
++    if (sn_idx == -1) 
++        LOGD("get_cfg_idx failed! pos:%s", pos);
++
++    //LOGD("load weights done!");
++
++    in_len = get_sn_input_len(sn_idx);
++    out_len = get_sn_output_len(sn_idx);
++	network_predict_ca_cmd(sn_idx, input, in_len, output, out_len);
++
++	return;
++}
++
++void load_weights(SHADOWNET_CFG_IDX sn_idx) {
++	switch(sn_idx) {
++		case CONV1:
++			load_alex_conv1_weights(sn_idx);
++			break;
++		case CONV2:
++		case CONV3:
++		case CONV4:
++		case CONV5:
++		case CONV6:
++		case CONV7:
++		case CONV8:
++            load_alex_conv_norm_weights(sn_idx);
++			break;
++		case RESULTS:
++			load_alex_res_weights(sn_idx);
++			break;
++		default:
++			LOGD("Load alexnet weights Error!");
++	}	
++	return;
++} 
++
++#define LOAD_WEIGTHS_HEADER                                 \
++        void *addr = weights
++
++#define LOAD_WEIGHTS_CA(type, idx, size)                        \
++         load_weights_ca_cmd(type, addr, idx, size, sn_idx);    \
++         offset += size;                                        \
++         addr = (char *) weights + offset
++
++
++int load_linear_transform_weights(void *weights, SHADOWNET_CFG_IDX sn_idx) {
++    int units = sdw_cfg[sn_idx].units;
++    int offset = 0;
++
++    LOAD_WEIGTHS_HEADER;
++    // obfw
++    LOAD_WEIGHTS_CA(LT, 1, units*2*sizeof(int));
++    // rscalar
++    LOAD_WEIGHTS_CA(LT, 2, units*sizeof(float));
++    // bias
++    LOAD_WEIGHTS_CA(LT, 3, units*sizeof(float));
++
++    return offset;
++}
++
++
++int load_add_mask_a_weights(void *weights, SHADOWNET_CFG_IDX sn_idx) {
++    int hw;
++    int units = sdw_cfg[sn_idx].units;
++    int outputs;
++    int offset = 0;
++    
++    if (sn_idx == CONV1) 
++        hw = sdw_cfg[sn_idx].pospl_hw;
++    else
++        hw = sdw_cfg[sn_idx].prepl_hw;
++    outputs = hw*units;
++
++    LOAD_WEIGTHS_HEADER;
++
++    // weights 
++    LOAD_WEIGHTS_CA(AM_A, 1, outputs*sizeof(float));
++    // rscalar 
++    LOAD_WEIGHTS_CA(AM_A, 2, sizeof(float));
++
++    return offset;
++}
++
++int load_add_mask_b_weights(void *weights, SHADOWNET_CFG_IDX sn_idx) {
++    int pospl_hw= sdw_cfg[sn_idx].pospl_hw;
++    int units = sdw_cfg[sn_idx].units;
++    int outputs = pospl_hw*units;
++    int offset = 0;
++
++    LOAD_WEIGTHS_HEADER;
++
++    // weights 
++    LOAD_WEIGHTS_CA(AM_B, 1, outputs*sizeof(float));
++    // rscalar 
++    LOAD_WEIGHTS_CA(AM_B, 2, sizeof(float));
++
++    return offset;
++}
++
++#define LOAD_WEIGHTS_DECLARE(sn_idx)        \
++	void *base = weights_addrs[sn_idx]; \
++	void *addr;                         \
++	int offset = WEIGHTS_HEADER;        \
++	int len = 0                         \
++
++#define LOAD_WEIGHTS(func)          \
++         addr = (char*) base + offset;      \
++         len = func(addr, sn_idx); \
++         offset += len
++
++// AN_CONV1 : LT, AB, ReLU, MP, AM_A;
++void load_alex_conv1_weights(SHADOWNET_CFG_IDX sn_idx){
++    LOAD_WEIGHTS_DECLARE(sn_idx); 
++
++	// linear transform
++    LOAD_WEIGHTS(load_linear_transform_weights);
++
++    // add mask a 
++    LOAD_WEIGHTS(load_add_mask_a_weights);
++
++	return;
++} 
++
++// AN_CONV2 - CONV8 : LT, AB, AM_A, ReLU, (MP,) AM_B;
++void load_alex_conv_norm_weights(SHADOWNET_CFG_IDX sn_idx){
++    LOAD_WEIGHTS_DECLARE(sn_idx); 
++
++	// linear transform
++    LOAD_WEIGHTS(load_linear_transform_weights);
++
++    // pop mask a 
++    LOAD_WEIGHTS(load_add_mask_a_weights);
++
++    // push mask b
++    LOAD_WEIGHTS(load_add_mask_b_weights);
++
++	return;
++} 
++
++// AN_RET: LT, AB, AM_A, ReLU, softmax;
++void load_alex_res_weights(SHADOWNET_CFG_IDX sn_idx){
++    LOAD_WEIGHTS_DECLARE(sn_idx); 
++
++	// linear transform
++    LOAD_WEIGHTS(load_linear_transform_weights);
++
++    // pop mask a 
++    LOAD_WEIGHTS(load_add_mask_a_weights);
++
++	return;
++} 
+-- 
+2.7.4
+

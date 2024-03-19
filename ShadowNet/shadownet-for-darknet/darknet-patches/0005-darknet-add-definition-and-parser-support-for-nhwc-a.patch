@@ -1,0 +1,119 @@
+From a4da8957f06f3bb5ae9d4cf6d9359461480dbaf8 Mon Sep 17 00:00:00 2001
+From: Zhichuang Sun <sun.zhi@husky.neu.edu>
+Date: Thu, 14 May 2020 15:16:00 +0000
+Subject: [PATCH 5/9] darknet:add definition and parser support for nhwc and
+ bn_bias
+
+Signed-off-by: Zhichuang Sun <sun.zhi@husky.neu.edu>
+---
+ include/darknet.h |  5 ++++-
+ src/parser.c      | 26 +++++++++++++++++++++-----
+ 2 files changed, 25 insertions(+), 6 deletions(-)
+
+diff --git a/include/darknet.h b/include/darknet.h
+index ffa74c3..0907f39 100644
+--- a/include/darknet.h
++++ b/include/darknet.h
+@@ -46,7 +46,7 @@ typedef struct{
+ tree *read_tree(char *filename);
+ 
+ typedef enum{
+-    LOGISTIC, RELU, RELIE, LINEAR, RAMP, TANH, PLSE, LEAKY, ELU, LOGGY, STAIR, HARDTAN, LHTAN, SELU,NOACT
++    LOGISTIC, RELU, RELIE, LINEAR, RAMP, TANH, PLSE, LEAKY, ELU, LOGGY, STAIR, HARDTAN, LHTAN, SELU,NOACT, RELU6
+ } ACTIVATION;
+ 
+ typedef enum{
+@@ -219,6 +219,8 @@ struct layer{
+     int units;
+     /* NHWC(tflite) to NCHW(darknet) */
+     int nhwc;
++    /* batchnorm layer has bias weights */
++    int bn_bias;
+ 
+     char  * cweights;
+     int   * indexes;
+@@ -634,6 +636,7 @@ void copy_cpu(int N, float *X, int INCX, float *Y, int INCY);
+ void scal_cpu(int N, float ALPHA, float *X, int INCX);
+ void fill_cpu(int N, float ALPHA, float * X, int INCX);
+ void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial);
++void normalize_cpu_nhwc(float *x, float *mean, float *variance, int batch, int filters, int spatial);
+ void softmax(float *input, int n, float temp, int stride, float *output);
+ 
+ int best_3d_shift_r(image a, image b, int min, int max);
+diff --git a/src/parser.c b/src/parser.c
+index 36805e5..b13a2d1 100644
+--- a/src/parser.c
++++ b/src/parser.c
+@@ -534,7 +534,9 @@ avgpool_layer parse_avgpool(list *options, size_params params)
+     batch=params.batch;
+     if(!(h && w && c)) error("Layer before avgpool layer must output image.");
+ 
++    int use_nhwc = option_find_int(options, "nhwc", 0);
+     avgpool_layer layer = make_avgpool_layer(batch,w,h,c);
++    layer.nhwc = use_nhwc;
+     return layer;
+ }
+ 
+@@ -560,7 +562,11 @@ layer parse_normalization(list *options, size_params params)
+ 
+ layer parse_batchnorm(list *options, size_params params)
+ {
++    int load_bias = option_find_int(options, "bn_bias", 0);
++    int use_nhwc = option_find_int(options, "nhwc", 0);
+     layer l = make_batchnorm_layer(params.batch, params.w, params.h, params.c);
++    l.bn_bias = load_bias;
++    l.nhwc = use_nhwc;
+     return l;
+ }
+ 
+@@ -1036,6 +1042,9 @@ void save_batchnorm_weights(layer l, FILE *fp)
+     }
+ #endif
+     fwrite(l.scales, sizeof(float), l.c, fp);
++    if (l.bn_bias== 1) {
++        fwrite(l.biases, sizeof(float), l.c, fp);
++    }
+     fwrite(l.rolling_mean, sizeof(float), l.c, fp);
+     fwrite(l.rolling_variance, sizeof(float), l.c, fp);
+ }
+@@ -1195,17 +1204,25 @@ void load_linear_transform_weights(layer l, FILE *fp)
+ 
+ void load_shuffle_channel_weights(layer l, FILE *fp)
+ {
+-    fread(l.obfweights, sizeof(int), l.units, fp);
+-    DUMPW8("shuffle_channel obfw",l.units*4, l.obfweights);
+-    fread(l.rbias, sizeof(float), l.units, fp);
+-    DUMPW8("shuffle_channel rbias",l.units*4, l.rbias);
++    fread(l.obfweights, sizeof(int), l.c, fp);
++    DUMPW8("shuffle_channel obfw",l.c*4, l.obfweights);
++    fread(l.rbias, sizeof(float), l.c, fp);
++    DUMPW8("shuffle_channel rbias",l.c*4, l.rbias);
+ }
+ 
+ void load_batchnorm_weights(layer l, FILE *fp)
+ {
+     fread(l.scales, sizeof(float), l.c, fp);
++    DUMPW4F("bn scales",l.c, l.scales);
++    if (l.bn_bias == 1) {
++        printf("bn_bias = 1,load biases\n");
++        fread(l.biases, sizeof(float), l.c, fp);
++        DUMPW4F("bn biases",l.c, l.biases);
++    }
+     fread(l.rolling_mean, sizeof(float), l.c, fp);
++    DUMPW4F("bn mean",l.c, l.rolling_mean);
+     fread(l.rolling_variance, sizeof(float), l.c, fp);
++    DUMPW4F("bn variance",l.c, l.rolling_variance);
+ #ifdef GPU
+     if(gpu_index >= 0){
+         push_batchnorm_layer(l);
+@@ -1393,7 +1410,6 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
+             }
+ #endif
+         }
+-        net->layers[i] = l;
+     }
+     fprintf(stderr, "Done!\n");
+     fclose(fp);
+-- 
+2.7.4
+
