@@ -1,54 +1,36 @@
 # Prediction Poisoning: Towards Defenses Against DNN Model Stealing Attacks, ICLR '20
 
-**Tribhuvanesh Orekondy<sup>1</sup>, Bernt Schiele<sup>1</sup>, Mario Fritz<sup>2</sup>**   
+## Setup & Installation
 
-<sup>1</sup> Max Planck Institute for Informatics   
-<sup>2</sup> CISPA Helmholtz Center for Information Security
-
-----
-
-High-performance Deep Neural Networks (DNNs) are increasingly deployed in many real-world applications e.g., cloud prediction APIs. 
-Recent advances in model functionality stealing attacks via black-box access (i.e., inputs in, predictions out) threaten the business model of such applications, which require a lot of time, money, and effort to develop. 
-Existing defenses take a passive role against stealing attacks, such as by truncating predicted information. 
-We find such passive defenses ineffective against DNN stealing attacks. 
-In this paper, we propose the first defense which actively perturbs predictions targeted at poisoning the training objective of the attacker. 
-We find our defense effective across a wide range of challenging datasets and DNN model stealing attacks, and additionally outperforms existing defenses. 
-Our defense is the first that can withstand highly accurate model stealing attacks for tens of thousands of queries, amplifying the attacker's error rate up to a factor of 85× with minimal impact on the utility for benign users.
-
-**tl; dr:** We propose the first approach that can resist DNN model stealing attacks
-
-**Project webpage: [url](https://resources.mpi-inf.mpg.de/d2/orekondy/predpoison/)**
-
-## Installation
-
-You can use the current repository or clone the repository to test [prediction-poisoning](https://github.com/tribhuvanesh/knockoffnets.git):
-
-`We have included a patch file that can be used to update the code or track the changes we made.`
+You can use the `env-setup.sh` file to setup the virtual environment, if failed use the `prediction-poisoning/environment.yml` file to create the virtual environment.
 
 ```bash
-$ cd prediction-posioning ,or
-$ git clone --recursive https://github.com/tribhuvanesh/knockoffnets.git
-$ conda create --name prediction python=3.7.16
-$ conda activate prediction
-$ conda env create -f environment.yml ,or
-$ pip install -r requirements.txt
-$ git clone https://github.com/tribhuvanesh/knockoffnets.git
-$ cd knockoffnets
-$ pip install -e .
+$ conda activate predpoison
 ```
 
 Please refer to `orig_README.md` for more details about Datasets, Victim Models, Attack Models, Surrogate Models used by author. 
 
-### Running Experiments
+## Running Experiments
 
-Use the script file (test.sh) to reproduce the results the author claims. Also, with slights modifcations to test.sh file you can try out your own model.
+### Evaluation with different model architecture -
+
+- Use the script file `test.sh` to reproduce the results the author claims. Also, with slights modifcations to `test.sh` file you can try out your own model.
 
 ```bash
-./test.sh
+$ chmod +x tesh.sh
+$ ./test.sh
 ```
+#### NOTE:
+You can modify the `test.sh` file and test its effectiveness with different model architecture.
 
-Use the test.sh file to run the experiment or follow the steps below.
+### Energy consumption
 
+- Use [PCM](https://github.com/intel/pcm) tool in an another terminal to monitor the energy consumption in real-time while running project before and after the attack/defense is applied.
+- For energy consumption in real-time, you need to run the experiments in two scenarios, one when the model is vulnerable (before defense) and another, when the defense is applied to the model.
+- We recommend referring to the `orig_README.md` file for detailed instructions on how to execute the two scenarios.
+
+ 
+The `test.sh` file contains the following instructions -
 The instructions below will execute experiments with the following setting:
  * Defense = MAD
  * Attack = Knockoff
