@@ -10,6 +10,8 @@ $ export PYTHONPATH="$PYTHONPATH:<PATH>/knockoffnets:<PATH>/adaptivemisinformati
 ## Running Experiments 
 
 ### Evaluation with different model architecture -
+- Use the script file `evaluate.sh`  to reproduce the results the author claims. Also, with slights modifcations to `evaluate.sh`  file you can try out your own model.
+
 ```bash
 $ chmod + ./evaluate.sh
 $ ./evaluate.sh 
@@ -56,3 +58,5 @@ Note:
 ## Credits
 
 Parts of this repository have been adapted from https://github.com/tribhuvanesh/knockoffnets
+
+
