@@ -22,7 +22,7 @@ You can modify the `evaluate.sh` file and test its effectiveness with different 
 ### Energy consumption
 - Use [PCM](https://github.com/intel/pcm) tool in an another terminal to monitor the energy consumption in real-time while running project before and after the attack/defense is applied.
 - For energy consumption in real-time, you need to run the experiments in two scenarios, one when the model is vulnerable (before defense) and another, when the defense is applied to the model.
-- We recommend referring to the `orig_README.md` file for detailed instructions on how to execute the two scen
+- We recommend referring to the `orig_README.md` file for detailed instructions on how to execute the two  scenarios.
 
 The `evaluate.sh` file contains the following instructions - 
 
