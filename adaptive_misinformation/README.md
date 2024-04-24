@@ -1,22 +1,28 @@
 # Defending Against Model Stealing Attacks with Adaptive Misinformation
 
-Implementation of the paper "Defending Against Model Stealing Attacks with Adaptive Misinformation".
+## Setup & Installation
+You can use the `env-setup.sh` file to setup the virtual environment, if failed use the `adaptive_misinformation/environment.yml` file to create the virtual environment.
+```bash
+$ conda activate admis
+$ export PYTHONPATH="$PYTHONPATH:<PATH>/knockoffnets:<PATH>/adaptivemisinformation" # Add KnockoffNets and AdaptiveMisinformation to PYTHONPATH; Replace <PATH> with the path containing knockoffnets/adaptivemisinformation dirs
+```
 
-## Setup
+## Running Experiments 
 
-1. `git clone https://github.com/sanjaykariyappa/adaptive_misinformation.git` or use the current repository `<path>/adaptive-misinformation`.
+### Evaluation with different model architecture -
+```bash
+$ chmod + ./evaluate.sh
+$ ./evaluate.sh 
+```
+#### NOTE:
+You can modify the `evaluate.sh` file and test its effectiveness with different model architecture.
 
-- Use the the PATCH file `adaptive-misinformation.patch` to update the code or, 
- 
-2. `conda env create -f environment.yml --name misinformation` # Creates Anaconda env with requirements
+### Energy consumption
+- Use [PCM](https://github.com/intel/pcm) tool in an another terminal to monitor the energy consumption in real-time while running project before and after the attack/defense is applied.
+- For energy consumption in real-time, you need to run the experiments in two scenarios, one when the model is vulnerable (before defense) and another, when the defense is applied to the model.
+- We recommend referring to the `orig_README.md` file for detailed instructions on how to execute the two scen
 
-3. `conda activate misinformation`
-
-3. `git clone https://github.com/tribhuvanesh/knockoffnets.git ` # Download KnockoffNets repository
-
-4. export PYTHONPATH="$PYTHONPATH:<PATH>/knockoffnets:<PATH>/adaptivemisinformation" # Add KnockoffNets and AdaptiveMisinformation to PYTHONPATH; Replace <PATH> with the path containing knockoffnets/adaptivemisinformation dirs
-
-5. Run `./evaluate.sh` to evaluate the results or follow the below steps to test AM.
+The `evaluate.sh` file contains the following instructions - 
 
 ## Train Defender Model
 
@@ -50,5 +56,3 @@ Note:
 ## Credits
 
 Parts of this repository have been adapted from https://github.com/tribhuvanesh/knockoffnets
-
-
