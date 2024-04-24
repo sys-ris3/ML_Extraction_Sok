@@ -1,0 +1,14 @@
+name: ml-doctor
+channels:
+  - defaults
+dependencies:
+  - python=3.*
+  - pytorch
+  - numpy
+  - scipy
+  - torchvision
+  - scikit-learn
+  - tqdm
+  - pandas
+  - pip:
+    - opacus==1.4.0

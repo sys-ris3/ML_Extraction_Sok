@@ -1,0 +1,10 @@
+name: deepsniffer
+channels:
+  - defaults
+  - pytorch
+dependencies:
+  - python=3.6.2
+  - tensorflow<2.0.0
+  - scipy
+  - pytorch
+  - matplotlib
