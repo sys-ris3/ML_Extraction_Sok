@@ -1,0 +1,6 @@
+**/*.pyc
+**/*.log
+
+adaptive_misinformation/admis/utils/__pycache__/*
+DeepSniffer/ModelExtraction/validate_deepsniffer/predictors/logs_first_seg_ctc_v3/*
+**/*.f-lnx-0091
