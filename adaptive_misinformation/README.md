@@ -5,9 +5,10 @@
 - Use `environment.yml` provided in the directory `ML_Extraction_Sok/adaptive_misinformation` to create the virtual environment.
 ```bash
 $ cd ML_Extraction_Sok/adaptive_misinformation
+$ conda env create -f environment.yml
+$ conda activate admis
 $ chmod +x setup.sh
 $ ./setup.sh
-$ conda activate admis
 $ export PYTHONPATH="$PYTHONPATH:<PATH>/knockoffnets:<PATH>/adaptivemisinformation" # Add KnockoffNets and AdaptiveMisinformation to PYTHONPATH; Replace <PATH> with the path containing knockoffnets/adaptivemisinformation dirs
 ```
 
