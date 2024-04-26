@@ -5,10 +5,9 @@
 - Use `environment.yml` provided in the directory `ML_Extraction_Sok/adaptive_misinformation` to create the virtual environment.
 ```bash
 $ cd ML_Extraction_Sok/adaptive_misinformation
-$ conda env create -f environment.yml
-$ conda activate admis
 $ chmod +x setup.sh
 $ ./setup.sh
+$ conda activate admis
 $ export PYTHONPATH="$PYTHONPATH:<PATH>/knockoffnets:<PATH>/adaptivemisinformation" # Add KnockoffNets and AdaptiveMisinformation to PYTHONPATH; Replace <PATH> with the path containing knockoffnets/adaptivemisinformation dirs
 ```
 
@@ -61,5 +60,3 @@ python admis/adv_user/train_jbda.py ./models/defender/mnist/ ./models/adv_user/m
 Note:
 1. '--defense_levels' refers to the values of tau in the context of Selective Misinformation.
 2. Varying the value of --defense_levels can be used to obtain the defender accuracy vs clone accuracy trade-off curve
-
-
