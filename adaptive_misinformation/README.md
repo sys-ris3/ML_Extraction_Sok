@@ -1,7 +1,7 @@
 # PROJECT: Defending Against Model Stealing Attacks with Adaptive Misinformation
 
 ## 1. Setup & Installation
-- You can use the `quick-tesh.sh` file to setup the virtual environment and quickly run the project or,
+- You can use the `env-setup.sh` file to setup the virtual environments and then used `quick-test.sh` to quickly run the projects (all projects) or,
 - Use `environment.yml` provided in the directory `ML_Extraction_Sok/adaptive_misinformation` to create the virtual environment.
 ```bash
 $ cd ML_Extraction_Sok/adaptive_misinformation
