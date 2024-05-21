@@ -34,7 +34,7 @@ author = {Tushar Nayan and Qiming Gao and Mohammed Al Duniawi and Marcus Botacin
 title = {SoK: All You Need to Know About On-Device ML Model Extraction - The Gap Between Research and Practice},
 booktitle = {33rd {USENIX} Security Symposium ({USENIX} Security 24)},
 year = {2024},
-url = {},
+url = {https://www.usenix.org/conference/usenixsecurity24/presentation/nayan},
 publisher = {{USENIX} Association},
 month = aug,
 }
