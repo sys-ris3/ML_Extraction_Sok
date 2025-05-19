@@ -72,6 +72,7 @@ month = aug,
     *   Understanding Real-world Threats to Deep Learning Models in Android Apps [\[Paper\]](https://dl.acm.org/doi/pdf/10.1145/3548606.3559388)
 *   **Communication-based attacks** <a name="communication-based-attacks"></a>
     *   Security Analysis of Deep Neural Networks Operating in the Presence of Cache Side-Channel Attacks [\[Paper\]](https://arxiv.org/abs/1810.03487) [\[Code\]](https://github.com/Sanghyun-Hong/DeepRecon)
+    *   DeepCache: Revisiting Cache Side-Channel Attacks in Deep Neural Networks Executables [\[Paper\]](https://dl.acm.org/doi/10.1145/3658644.3690241) [\[Code\]](https://github.com/monkbai/DeepCache)
     *   CSI NN: Reverse Engineering of Neural Network Architectures Through Electromagnetic Side Channel [\[Paper\]](https://www.usenix.org/conference/usenixsecurity19/presentation/batina)
     *   Cache Telepathy: Leveraging Shared Resource Attacks to Learn DNN Architectures [\[Paper\]](https://www.usenix.org/conference/usenixsecurity20/presentation/yan)
     *   Open DNN Box by Power Side-Channel Attack [\[Paper\]](https://ieeexplore.ieee.org/document/9000972)
@@ -88,6 +89,7 @@ month = aug,
 *   **Model-based attacks** <a name="model-based-attacks"></a>
     *   ML-Doctor: Holistic Risk Assessment of Inference Attacks Against Machine Learning Models [\[Paper\]](https://www.usenix.org/conference/usenixsecurity22/presentation/liu-yugeng) [\[Code\]](https://github.com/liuyugeng/ML-Doctor)
     *   Stealing Hyperparameters in Machine Learning [\[Paper\]](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8418595)
+    *   ATOM: A Framework of Detecting Query-Based Model Extraction Attacks for Graph Neural Networks [\[Paper\]](https://arxiv.org/pdf/2503.16693) [\[Code\]](https://github.com/LabRAI/ATOM)
     *   Towards Reverse-Engineering Black-Box Neural Networks [\[Paper\]](https://arxiv.org/abs/1711.01768) [\[Code\]](https://github.com/coallaoh/WhitenBlackBox)
     *   ActiveThief: Model Extraction Using Active Learning and Unannotated Public Data [\[Paper\]](https://ojs.aaai.org/index.php/AAAI/article/view/5432) [\[Code\]](https://bitbucket.org/iiscseal/activethief/src/master/)
     *   ML-Stealer: Stealing Prediction Functionality of Machine Learning Models with Mere Black-Box Access [\[Paper\]](https://ieeexplore.ieee.org/abstract/document/9724507?casa_token=fe5g_XutmagAAAAA:hu_7RwHu07rDIa_DUSJUaQ18gr1az3Qlw9sq-8KABxBOfEZLdeoL-ORuI8KhHZufoPpL4HIilg)
@@ -112,8 +114,10 @@ month = aug,
     *   ShadowNet: A Secure and Efficient On-device Model Inference System for Convolutional Neural Networks [\[Paper\]](https://arxiv.org/pdf/2011.05905)
 *   **Communication-based defense**  <a name="communication-based-defense"></a>
     *   ObfuNAS: A Neural Architecture Search-based DNN Obfuscation Approach [\[Paper\]](https://arxiv.org/abs/2208.08569) [\[Code\]](https://github.com/Tongzhou0101/ObfuNAS)
+    *   No Privacy Left Outside: On the (In-)Security of TEE-Shielded DNN Partition for On-Device ML [\[Paper\]](https://ieeexplore.ieee.org/abstract/document/10646815) [\[Code\]](https://github.com/ziqi-zhang/TEESlice-artifact)
     *   ShadowNet: A Secure and Efficient On-device Model Inference System for Convolutional Neural Networks [\[Paper\]](https://arxiv.org/pdf/2011.05905)
-    *   Slalom: Fast, Verifiable and Private Execution of Neural Networks in Trusted Hardware [\[Paper\]](https://arxiv.org/abs/1806.03287) [\[Code\]](https://github.com/ftramer/slalom) 
+    *   Slalom: Fast, Verifiable and Private Execution of Neural Networks in Trusted Hardware [\[Paper\]](https://arxiv.org/abs/1806.03287) [\[Code\]](https://github.com/ftramer/slalom)
+    *   Phantom: Privacy-Preserving Deep Neural Network Model Obfuscation in Heterogeneous TEE and GPU System [\[Paper\]](https://www.usenix.org/conference/usenixsecurity25/presentation/bai)
     *   Secure Outsourced Matrix Computation and Application to Neural Networks [\[Paper\]](https://eprint.iacr.org/2018/1041.pdf)
     *   NPUFort: a secure architecture of DNN accelerator against model inversion attack [\[Paper\]](https://www.semanticscholar.org/paper/NPUFort%3A-a-secure-architecture-of-DNN-accelerator-Wang-Hou/35d02c98d78abbd2b7239a44cdc920634af6926f)
     *   NeurObfuscator: A Full-stack Obfuscation Tool to Mitigate Neural Architecture Stealing [\[Paper\]](https://arxiv.org/abs/2107.09789) 
@@ -125,6 +129,7 @@ month = aug,
     *   PRADA: Protecting against DNN Model Stealing Attacks [\[Paper\]](https://arxiv.org/abs/1805.02628v4) [\[Code\]](https://github.com/SSGAalto/prada-protecting-against-dnn-model-stealing-attacks)
     *   SteerAdversary [\[Paper\]](https://proceedings.mlr.press/v162/mazeika22a.html)
     *   Latent Dirichlet Allocation Model Training with Differential Privacy [\[Paper\]](https://arxiv.org/pdf/2010.04391)
+    *   QUEEN: Query Unlearning Against Model Extraction [\[Paper\]](https://ieeexplore.ieee.org/abstract/document/10887027)
 
 ---
 
